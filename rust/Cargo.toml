@@ -1,0 +1,18 @@
+[package]
+name = "rust-esp32-std-hellow"
+version = "0.1.0"
+authors = ["ivmarkov"]
+edition = "2018"
+
+[dependencies]
+libc = "0.2.80"
+rocket = "0.4.6"
+indexmap = "=1.2" # Actually, Rocket 0.4.6 fails to compile with later versions...
+
+[patch.crates-io]
+time = { git = 'https://github.com/ivmarkov/time.git', branch = 'master' }
+#chrono = { git = 'https://github.com/ivmarkov/chrono.git', branch = 'main' } # TODO
+getrandom = { git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1" }
+
+[lib]
+crate-type = ["staticlib"]
