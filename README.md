@@ -12,8 +12,8 @@ The app is a simple "Hello, World" web server implememented with Rust's [Rocket 
 
 * The app currently uses PlatformIO as a driver for building the ESP-IDF framework, for linking with the Rust code and for flashing etc.
 * The Rust code is compiled to a static C library, which is then linked against the PlatformIO code to get the final elf & bin executables
-* Since as per above PlatformIO is only used to build the ESP-IDF framework itself, it might be removed as a requirement in future (even though integration with PlatformIO brings other benefits, like eaiser support for multi-langiage (C & Rust) projects)
-* Since the work to integrate the Rust build system with PlatformIO's own build is unfinished, you'll have to first build the Rust side (using the regulat `cargo build --release`) and then trigger the PlatformIO build separately.
+* Since as per above PlatformIO is only used to build the ESP-IDF framework itself, it might be removed as a requirement in future (even though integration with PlatformIO brings other benefits, like eaiser support for multi-language (C & Rust) projects)
+* Since the work to integrate the Rust build system with PlatformIO's own build is unfinished, you'll have to first build the Rust side (using the regular `cargo build --release`) and then trigger the PlatformIO build separately.
 
 ### Rough steps
 
@@ -23,16 +23,18 @@ The app is a simple "Hello, World" web server implememented with Rust's [Rocket 
 * `cargo build --release`
 * `cd ..`
 * Apply a small fix to the ESP-IDF TLS pthread support (to be submitted as an issue against the ESP-IDF repo):
-** `cd ~/.platformio/packages/framework-espidf`
-** `git apply ~/...(this path is specific to your env).../rust-esp32-std-hello/pthread_destructor_fix.diff`
-** `cd ~/...(this path is specific to your env).../rust-esp32-std-hello`
+```
+cd ~/.platformio/packages/framework-espidf
+git apply ~/...(this path is specific to your env).../rust-esp32-std-hello/pthread_destructor_fix.diff
+cd ~/...(this path is specific to your env).../rust-esp32-std-hello
+```
 * Change lines 137 and 138 in `rust-esp32-std-hello/rust/src/lib.rs` to contain the SSID & password of your wireless network
-* Invoke the PlatformIO build in the app home diretory
+* Invoke the PlatformIO build in the app home directory
 * Flash
 
-NOTE 1: The debug build is currently VERY large, hence why building a release build above
+NOTE 1: The debug build is currently VERY large (to be investigated), hence why the steps above produce a release build above
 
-NOTE 2: Even with release build, the final executable will be ~ 1.5MB (where 600-700K are because Rocket is relatively heavy) which is above the standard app partition size of most ESP boards. Hence **this project has a custom partition**
+NOTE 2: Even with release build, the final executable will be ~ 1.5MB (where 600-700K are because Rocket is relatively heavy; the other fatness comes from the ESP-IDF WiFi driver itself) which is above the standard app partition size of most ESP boards. Hence **this project has a custom partition**
 
 ## Running
 
@@ -87,9 +89,10 @@ I (10099) wifi:security: WPA2-PSK, phy: bgn, rssi: -31
 I (10099) wifi:pm start, type: 1
 
 I (10179) wifi:AP's beacon interval = 102400 us, DTIM period = 3
-␛[0;32mI (12479) esp_netif_handlers: sta ip: 192.168.10.155, mask: 255.255.255.0, gw: 192.168.10.1␛[0m
+␛[0;32mI (12479) esp_netif_handlers: sta ip: ***the ESP board IP is here***, mask: 255..., gw: ***your-gateway***␛[0m
 ```
 
 * NOTE: If you have not applied the pthread patch correctly, the app will CRASH just after the line which says "About to join the threads. If ESP-IDF was patched successfully, joining will NOT crash".
 * If the app starts successfully, it should be listening on the printed IP address.
 * Open a browser, and navigate to `http://<printed-ip-address>:8000/`
+
