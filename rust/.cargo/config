@@ -1,0 +1,6 @@
+[build]
+target = "xtensa-esp32-none-elf" # esp32
+
+[unstable]
+build-std = ["std", "panic_abort"]
+build-std-features = ["panic_immediate_abort"]
