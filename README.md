@@ -85,7 +85,7 @@ I (9299) wifi:new:<1,0>, old:<1,0>, ap:<255,255>, sta:<1,0>, prof:1
 I (10069) wifi:state: init -> auth (b0)
 I (10079) wifi:state: auth -> assoc (0)
 I (10079) wifi:state: assoc -> run (10)
-I (10099) wifi:connected with muci, aid = 1, channel 1, BW20, bssid = 78:8a:20:da:31:06
+I (10099) wifi:connected with ***your-ssid-here***, aid = 1, channel 1, BW20, bssid = ...
 I (10099) wifi:security: WPA2-PSK, phy: bgn, rssi: -31
 I (10099) wifi:pm start, type: 1
 
