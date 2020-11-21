@@ -1,0 +1,33 @@
+diff --git a/components/pthread/pthread_local_storage.c b/components/pthread/pthread_local_storage.c
+index 557276847..dbf8dc603 100644
+--- a/components/pthread/pthread_local_storage.c
++++ b/components/pthread/pthread_local_storage.c
+@@ -131,13 +131,25 @@ static void pthread_local_storage_thread_deleted_callback(int index, void *v_tls
+         // This is a little slow, walking the linked list of keys once per value,
+         // but assumes that the thread's value list will have less entries
+         // than the keys list
++
+         key_entry_t *key = find_key(entry->key);
+-        if (key != NULL && key->destructor != NULL) {
+-            key->destructor(entry->value);
+-        }
++
++	// Remove the entry from the list _before_ calling the destructor
++        // so as to conform to the specification of pthread_key_create as described e.g. here:
++        // https://pubs.opengroup.org/onlinepubs/009695399/functions/pthread_key_create.html
++	//
++        // This conformance is necessary for clients
++        // (e.g., Rust's libstd - see lines 622 and 624 here - https://github.com/rust-lang/rust/blob/master/library/std/src/thread/local.rs)
++        // which do strange stuff like calling pthread_setspecific() from _inside_ the destructor.
++        // That behavior - if not anticipated for - leads to heap corruption
++        void* value = entry->value;
+         value_entry_t *next_entry = SLIST_NEXT(entry, next);
+         free(entry);
+         entry = next_entry;
++
++        if (key != NULL && key->destructor != NULL) {
++            key->destructor(value);
++        }
+     }
+     free(tls);
+ }
