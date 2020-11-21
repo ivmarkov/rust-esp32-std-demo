@@ -6,14 +6,8 @@ edition = "2018"
 
 [dependencies]
 libc = "0.2.80"
-#esp-idf-sys = {git = "https://github.com/ivmarkov/esp-idf-sys.git/esp-idf-sys"}
-esp-idf-sys = {path = "../../esp-idf-sys/esp-idf-sys"}
-#embedded-hal = "1.0.0-alpha.4"
-#embedded-hal = { version = "1.0.0-alpha.4", features = ["unproven"] }
-#esp32-hal = "*"
-#cstr = "0.2.0"
-#esp32-wifi = {git = "https://github.com/ivmarkov/esp32-wifi.git", version = "*", features = ["espidf"]}
-#esp32-wifi = {path = "../../esp32-wifi", version = "*", features = ["espidf"]}
+esp-idf-sys = {git = "https://github.com/ivmarkov/esp-idf-sys.git"}
+#esp-idf-sys = {path = "../../esp-idf-sys/esp-idf-sys"}
 rocket = "0.4.6"
 indexmap = "=1.2" # Rocket 0.4.6 fails to compile with later versions...
 
