@@ -38,7 +38,8 @@ NOTE 2: Even with release build, the final executable will be ~ 1.5MB (where 600
 
 ## Running
 
-* Once you flash and run the app, you should see more or less the following:
+* Once you flash and run the app, connect to the board UART0 port, e.g. `miniterm /dev/ttyUSB0 115200` or similar
+* You should see more or less the following:
 
 ```
 Hello, world from Rust!
