@@ -1,5 +1,5 @@
 [build]
-target = "xtensa-esp32-none-elf" # esp32
+target = "xtensa-esp32-none-elf"
 
 [unstable]
 build-std = ["std", "panic_abort"]

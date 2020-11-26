@@ -6,8 +6,8 @@ edition = "2018"
 
 [dependencies]
 libc = "0.2.80"
-esp-idf-sys = {git = "https://github.com/ivmarkov/esp-idf-sys.git"}
-#esp-idf-sys = {path = "../../esp-idf-sys/esp-idf-sys"}
+#esp-idf-sys = {git = "https://github.com/ivmarkov/esp-idf-sys.git"}
+esp-idf-sys = {path = "../../esp-idf-sys"}
 rocket = "0.4.6"
 indexmap = "=1.2" # Rocket 0.4.6 fails to compile with later versions...
 
