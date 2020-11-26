@@ -17,10 +17,11 @@ The app is a simple "Hello, World" web server implememented with Rust's [Rocket 
 
 ### Rough steps
 
-* Clone and build the [Xtensa Rust compiler](https://github.com/ivmarkov/rust) first and make sure it is linked as a custom toolchain in Rustup (TBD: details)
+* Clone and build the [Xtensa Rust compiler](https://github.com/ivmarkov/rust) first and make sure it is linked as a custom toolchain in Rustup and activated, as per the instructions there. Make sure you've installed Xargo too.
 * Clone this repo `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
 * `cd rust-esp32-std-hello/rust`
-* `cargo build --release`
+* `xargo build --release`
+* NOTE: Currently building with cargo its build-std support (e.g. `cargo build --release`) does not work.
 * `cd ..`
 * Apply a small fix to the ESP-IDF TLS pthread support (to be submitted as an issue against the ESP-IDF repo):
 ```
