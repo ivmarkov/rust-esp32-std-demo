@@ -17,7 +17,9 @@ pub extern "C" fn main() {
 
     // Enough playing. Start WiFi and ignite the Rocket framework
 
-    init_peripherals();
+    if let Err(error) = init_peripherals() {
+        error.panic();
+    }
 
     println!("Igniting Rocket...");
     thread::spawn(move || { // In a separate thread for now, because the main thread stack is only 3K, which is not enough
@@ -76,17 +78,19 @@ fn threads_playground() {
 //    possibly by looking at its bare metal equivalent (https://github.com/esp-rs/esp32-hal)
 // 3. Think how to write wrappers for stuff which does not have bare metal traits & implementation in esp-rs. 
 //    E.g., various drivers, but most importantly - the ESP event loop system and the netif layer.
-fn init_peripherals() {
+fn init_peripherals() -> Result<(), Error> {
     unsafe {
-        Error::check(esp_netif_init());
-        Error::check(esp_event_loop_create_default());
+        esp!(esp_netif_init())?;
+        esp!(esp_event_loop_create_default())?;
 
-        match Error::from(nvs_flash_init()) {
-            Some(Error(ESP_ERR_NVS_NO_FREE_PAGES)) | Some(Error(ESP_ERR_NVS_NEW_VERSION_FOUND)) => Error::check(nvs_flash_erase()),
-            _ => ()
+        if let Some(err) = Error::from(nvs_flash_init()) {
+            match err.code() as u32 {
+                ESP_ERR_NVS_NO_FREE_PAGES | ESP_ERR_NVS_NEW_VERSION_FOUND => esp!(nvs_flash_erase())?,
+                _ => ()
+            }
         }
 
-        Error::check(nvs_flash_init());
+        esp!(nvs_flash_init())?;
 
         let cfg = wifi_init_config_t {
             event_handler: Some(esp_event_send_internal),
@@ -110,10 +114,10 @@ fn init_peripherals() {
             feature_caps: 1, // CONFIG_FEATURE_WPA3_SAE_BIT
             magic: 0x1F2F3F4F,
         };
-        Error::check(esp_wifi_init(&cfg));
+        esp!(esp_wifi_init(&cfg))?;
     
-        Error::check(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, Option::Some(event_handler), std::ptr::null_mut()));
-        Error::check(esp_event_handler_register(IP_EVENT, ip_event_t_IP_EVENT_STA_GOT_IP as i32, Option::Some(event_handler), std::ptr::null_mut()));
+        esp!(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, Option::Some(event_handler), std::ptr::null_mut()))?;
+        esp!(esp_event_handler_register(IP_EVENT, ip_event_t_IP_EVENT_STA_GOT_IP as i32, Option::Some(event_handler), std::ptr::null_mut()))?;
     
         // Initialize default station as network interface instance (esp-netif)
         let _esp_netif_t = esp_netif_create_default_wifi_sta();
@@ -137,17 +141,17 @@ fn init_peripherals() {
         set_str(&mut wifi_config.sta.ssid, "ssid");
         set_str(&mut wifi_config.sta.password, "pass");
 
-        Error::check(esp_wifi_set_mode(wifi_mode_t_WIFI_MODE_STA));
-        Error::check(esp_wifi_set_config(esp_interface_t_ESP_IF_WIFI_STA, &mut wifi_config));
-        Error::check(esp_wifi_start());        
+        esp!(esp_wifi_set_mode(wifi_mode_t_WIFI_MODE_STA))?;
+        esp!(esp_wifi_set_config(esp_interface_t_ESP_IF_WIFI_STA, &mut wifi_config))?;
+        esp!(esp_wifi_start())
     }
 }
 
 unsafe extern "C" fn event_handler(_arg: *mut c_types::c_void, event_base: esp_event_base_t, event_id: c_types::c_int, event_data: *mut c_types::c_void) {
     if event_base == WIFI_EVENT && event_id == wifi_event_t_WIFI_EVENT_STA_START as i32 {
-        esp_wifi_connect();
+        esp_nofail!(esp_wifi_connect());
     } else if event_base == WIFI_EVENT && event_id == wifi_event_t_WIFI_EVENT_STA_DISCONNECTED as i32 {
-        esp_wifi_connect();
+        esp_nofail!(esp_wifi_connect());
     } else if event_base == IP_EVENT && event_id == ip_event_t_IP_EVENT_STA_GOT_IP as i32 {
         let event: *const ip_event_got_ip_t = std::mem::transmute(event_data);
         println!("NETIF: Got IP: {:?}", (*event).ip_info);
