@@ -10,7 +10,7 @@ esp-idf-sys = {git = "https://github.com/ivmarkov/esp-idf-sys.git"}
 #esp-idf-sys = {path = "../../esp-idf-sys"}
 rocket = "0.4.6"
 indexmap = "=1.2" # Rocket 0.4.6 fails to compile with later versions...
-tokio = { features = [ "rt", "rt-multi-thread", "time", "macros" ], path = "../../tokio/tokio" }
+tokio = { features = [ "rt", "rt-multi-thread", "time", "macros" ], path = "tokio/tokio" }
 
 [patch.crates-io]
 time = { git = 'https://github.com/ivmarkov/time.git', branch = 'master' }
