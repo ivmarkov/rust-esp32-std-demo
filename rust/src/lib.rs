@@ -1,11 +1,16 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 #[macro_use] extern crate rocket;
 
-use std::time::*;
 use std::thread;
 
 use std::ffi::{CString};
 use esp_idf_sys::*;
+
+use tokio::{
+    join,
+    runtime::Runtime,
+    time::{sleep, Duration},
+};
 
 mod wip;
 
@@ -14,6 +19,8 @@ pub extern "C" fn main() {
     simple_playground();
 
     threads_playground();
+
+    tokio_playground();
 
     // Enough playing. Start WiFi and ignite the Rocket framework
 
@@ -66,6 +73,42 @@ fn threads_playground() {
     thread::sleep(Duration::new(2, 0));
 
     println!("Joins were successful.");
+}
+
+fn tokio_playground() {
+    Runtime::new().unwrap().block_on(async {
+        join!(
+            async { // Jessie
+                println!("Jessie: Prepare for trouble");
+                sleep(Duration::from_secs_f64(1.0)).await;
+                println!("Jessie: To protect the world from devastation!");
+                sleep(Duration::from_secs_f64(1.0)).await;
+                println!("Jessie: To denounce the evils of truth and love!");
+                sleep(Duration::from_secs_f64(1.0)).await;
+                println!("Jessie: Jessie!");
+                sleep(Duration::from_secs_f64(1.0)).await;
+                println!("Jessie: Team Rocket blasts off at the speed of light!");
+            },
+            async { // James
+                sleep(Duration::from_secs_f64(0.5)).await;
+                println!("James: And make it double");
+                sleep(Duration::from_secs_f64(1.0)).await;
+                println!("James: To unite all peoples within our nation!");
+                sleep(Duration::from_secs_f64(1.0)).await;
+                println!("James: To extend our reach to the stars above!");
+                sleep(Duration::from_secs_f64(1.0)).await;
+                println!("James: James!");
+                sleep(Duration::from_secs_f64(1.0)).await;
+                println!("James: Surrender now, or prepare to fight!");
+            },
+            async { // Meowth
+                sleep(Duration::from_secs_f64(5.5)).await;
+                println!("Meowth: Meowth!");
+                sleep(Duration::from_secs_f64(0.5)).await;
+                println!("Meowth: That's right!");
+            },
+        )
+    });
 }
 
 // NOTE:

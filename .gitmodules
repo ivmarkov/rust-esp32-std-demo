@@ -1,0 +1,3 @@
+[submodule "rust/tokio"]
+	path = rust/tokio
+	url = https://github.com/TilCreator/tokio.git
