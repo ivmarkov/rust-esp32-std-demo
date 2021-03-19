@@ -29,7 +29,13 @@ static LOGGER: Logger = Logger;
 
 #[no_mangle]
 pub extern "C" fn main() {
-    rust_main().unwrap();
+    match rust_main() {
+        Ok(()) => info!("Program completed successfully"),
+        Err(err) => error!("Got error \"{:#}\"", err)
+    };
+
+    warn!("Will die now...");
+    thread::sleep(Duration::from_secs(5));
 }
 
 fn rust_main() -> Result<()> {
