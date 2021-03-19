@@ -1,7 +1,6 @@
 [build]
 target = "xtensa-esp32-none-elf"
 
-# Uncommenting these breaks the xargo build. Uncomment only when figuring out why standard cargo -Z build-std no longer works
-#[unstable]
-#build-std = ["std", "panic_abort"]
-#build-std-features = ["panic_immediate_abort"]
+[unstable]
+build-std = ["std", "panic_abort"]
+build-std-features = ["panic_immediate_abort"]
