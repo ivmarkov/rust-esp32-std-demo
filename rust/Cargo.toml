@@ -8,21 +8,31 @@ edition = "2018"
 [package.metadata.docs.rs]
 default-target = "x86_64-unknown-linux-gnu"
 
+[profile.release]
+# symbols are nice and they don't increase the size on Flash
+debug = true
+opt-level = "s"
+
+[profile.dev]
+opt-level = "s"
+
 [dependencies]
-anyhow = "*"
+anyhow = {version = "1.0", features = ["backtrace"]}
+log = "0.4"
 #embedded-svc = {version = "*", path = "../../embedded-svc"}
 embedded-svc = {version = "*", git = "https://github.com/ivmarkov/embedded-svc.git"}
 #esp-idf-svc = {version = "*", path = "../../esp-idf-svc"}
 esp-idf-svc = {version = "*", git = "https://github.com/ivmarkov/esp-idf-svc.git"}
-libc = "0.2.80"
 #rocket = "0.4.6"
 #indexmap = "=1.2" # Rocket 0.4.6 fails to compile with later versions...
-log = "0.4"
 
 [patch.crates-io]
-time = { git = 'https://github.com/ivmarkov/time.git', branch = 'master' }
-#chrono = { git = 'https://github.com/ivmarkov/chrono.git', branch = 'main' } # TODO
-getrandom = { git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1" }
+anyhow = {version = "1.0", features = ["backtrace"], path = "../../anyhow"}
+#backtrace = {version = "0.3.56", path = "../../backtrace-rs"}
+backtrace = {version = "0.3.56", git = "https://github.com/ivmarkov/backtrace-rs.git", branch = "esp-idf"}
+time = {git = "https://github.com/ivmarkov/time.git", branch = "master"}
+getrandom = {git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1"}
+#chrono = {git = "https://github.com/ivmarkov/chrono.git", branch = "main"} # TODO
 
 [lib]
 crate-type = ["staticlib"]

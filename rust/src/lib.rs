@@ -2,10 +2,9 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 //#[macro_use] extern crate rocket;
 
-use std::{sync::Arc, time::*};
+use std::{env, sync::Arc, time::*};
 use std::thread;
 
-use esp_idf_svc::log::Logger;
 use esp_idf_svc::nvs::*;
 use esp_idf_svc::netif::*;
 use esp_idf_svc::sysloop::*;
@@ -23,29 +22,15 @@ use esp_idf_svc::httpd as idf;
 use anyhow::*;
 use log::*;
 
-mod wip;
-
-static LOGGER: Logger = Logger;
-
 #[no_mangle]
-pub extern "C" fn main() {
-    match rust_main() {
-        Ok(()) => info!("Program completed successfully"),
-        Err(err) => error!("Got error \"{:#}\"", err)
-    };
+fn main() -> Result<()> {
+    env::set_var("RUST_BACKTRACE", "1"); // Get some nice backtraces from Anyhow
 
-    warn!("Will die now...");
-    thread::sleep(Duration::from_secs(5));
-}
-
-fn rust_main() -> Result<()> {
     simple_playground();
 
     threads_playground();
 
     // Enough playing. Start WiFi and ignite Httpd
-
-    log::set_logger(&LOGGER).map(|()| LOGGER.initialize()).unwrap();
 
     let _wifi = wifi()?;
 
@@ -96,7 +81,7 @@ fn httpd() -> Result<idf::Server> {
     idf::ServerRegistry::new()
         .at("/").get(|_| Ok("Hello, world!".into()))?
         .at("/foo").get(|_| bail!("Boo, something happened!"))?
-        .at("/bar").get(|_| ResponseBuilder::new(403)
+        .at("/bar").get(|_| Response::new(403)
             .status_message("No permissions")
             .body("You have no permissions to access this page".into())
             .into())?
@@ -118,6 +103,8 @@ fn httpd() -> Result<idf::Server> {
 // }
 
 fn wifi() -> Result<EspWifi> {
+//    bail!("Will this create a backtrace??");
+
     let mut wifi = EspWifi::new(
         Arc::new(EspNetif::new()?),
         Arc::new(EspSysLoop::new()?),
@@ -133,16 +120,20 @@ fn wifi() -> Result<EspWifi> {
 
     info!("Wifi configuration set, about to get status");
 
-    if let Status(ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(ip_settings))), _) = wifi.get_status() {
+    let status = wifi.get_status();
+
+    if let Status(ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(ip_settings))), _) = status {
         info!("Wifi connected, about to do some pings");
 
         let ping_summary = ping::EspPing.ping_summary(ip_settings.subnet.gateway, &Default::default())?;
         if ping_summary.transmitted != ping_summary.received {
             bail!("Pinging gateway {} resulted in timeouts", ip_settings.subnet.gateway);
         }
-    }
 
-    info!("Pinging done");
+        info!("Pinging done");
+    } else {
+        bail!("Unexpected Wifi status: {:?}", &status);
+    }
 
     Ok(wifi)
 }
