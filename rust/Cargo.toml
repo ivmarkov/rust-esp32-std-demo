@@ -11,7 +11,7 @@ default-target = "x86_64-unknown-linux-gnu"
 [profile.release]
 # symbols are nice and they don't increase the size on Flash
 debug = true
-opt-level = "s"
+opt-level = "z"
 
 [profile.dev]
 opt-level = "s"
@@ -27,7 +27,6 @@ esp-idf-svc = {version = "*", git = "https://github.com/ivmarkov/esp-idf-svc.git
 #indexmap = "=1.2" # Rocket 0.4.6 fails to compile with later versions...
 
 [patch.crates-io]
-anyhow = {version = "1.0", features = ["backtrace"], path = "../../anyhow"}
 #backtrace = {version = "0.3.56", path = "../../backtrace-rs"}
 backtrace = {version = "0.3.56", git = "https://github.com/ivmarkov/backtrace-rs.git", branch = "esp-idf"}
 time = {git = "https://github.com/ivmarkov/time.git", branch = "master"}
