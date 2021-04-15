@@ -43,7 +43,7 @@ def run_cargo(source, target, env):
             if env.GetProjectOption("cargo_pio_common_build_dir", default = False)
             else os.path.join("$PROJECT_DIR", "target"))
 
-    env["ENV"]["BINDGEN_FLAGS"] = env.subst("$_CPPINCFLAGS")
+    env["ENV"]["BINDGEN_INC_FLAGS"] = env.subst("$_CPPINCFLAGS")
 
     if env.Execute(f"cargo build {'--release' if cargo_profile == 'release' else ''} --lib {cargo_options}"):
         Exit(1)
