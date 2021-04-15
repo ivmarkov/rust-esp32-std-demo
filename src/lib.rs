@@ -121,8 +121,8 @@ fn wifi() -> Result<EspWifi> {
     info!("Wifi created");
 
     wifi.set_configuration(&Configuration::Client(ClientConfiguration {
-        ssid: "muci".into(),
-        password: "immz1304".into(),
+        ssid: "ssid".into(),
+        password: "password".into(),
         ..Default::default()
     }))?;
 
