@@ -24,13 +24,14 @@ use log::*;
 
 #[no_mangle]
 fn main() -> Result<()> {
-    env::set_var("RUST_BACKTRACE", "1"); // Get some nice backtraces from Anyhow
-
     simple_playground();
 
     threads_playground();
 
-    // Enough playing. Start WiFi and ignite Httpd
+    // Enough playing.
+    // The real demo: start WiFi and ignite Httpd
+
+    env::set_var("RUST_BACKTRACE", "1"); // Get some nice backtraces from Anyhow
 
     let _wifi = wifi()?;
 
@@ -51,6 +52,15 @@ fn simple_playground() {
     children.push("foo");
     children.push("bar");
     println!("More complex print {:?}", children);
+
+    // Check calling into C (more of a Cargo <-> PlatfromIO hybrid project demo than anything else)
+
+    extern "C" {
+        fn get_magic_number() -> i32;
+    }
+
+    let magic_number = unsafe {get_magic_number()};
+    println!("Calling into C to get The Answer: {}. Big surprise.", magic_number);
 }
 
 fn threads_playground() {
@@ -103,8 +113,6 @@ fn httpd() -> Result<idf::Server> {
 // }
 
 fn wifi() -> Result<EspWifi> {
-//    bail!("Will this create a backtrace??");
-
     let mut wifi = EspWifi::new(
         Arc::new(EspNetif::new()?),
         Arc::new(EspSysLoop::new()?),
@@ -113,8 +121,8 @@ fn wifi() -> Result<EspWifi> {
     info!("Wifi created");
 
     wifi.set_configuration(&Configuration::Client(ClientConfiguration {
-        ssid: "ssid".into(),
-        password: "pass".into(),
+        ssid: "muci".into(),
+        password: "immz1304".into(),
         ..Default::default()
     }))?;
 

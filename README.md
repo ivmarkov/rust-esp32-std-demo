@@ -8,12 +8,17 @@ For more information, check the [STD-enabled Rust compiler port for ESP](https:/
 
 The app is a simple "Hello, World" web server implememented with the Rust type-safe ESP-IDF bindings from the [embedded-svc](https://github.com/ivmarkov/embedded-svc) and [esp-idf-svc](https://github.com/ivmarkov/esp-idf-svc) projects.
 
-## Building
+## Building (*)
 
-* The app currently uses PlatformIO as a driver for building the ESP-IDF framework, for linking with the Rust code and for flashing etc.
-* The Rust code is compiled to a static C library, which is then linked against the PlatformIO code to get the final elf & bin executables
-* Since as per above PlatformIO is only used to build the ESP-IDF framework itself, it might be removed as a requirement in future (even though integration with PlatformIO brings other benefits, like eaiser support for multi-language (C & Rust) projects)
-* Since the work to integrate the Rust build system with PlatformIO's own build is unfinished, you'll have to first build the Rust side (using the regular `cargo build --release`) and then trigger the PlatformIO build separately.
+* The app uses PlatformIO as a driver for building the ESP-IDF framework, for linking with the Rust code, for flashing, etc. etc.
+* The Rust code is compiled to a static C library, which is then linked against the PlatformIO code to get the final `.elf` & `.bin` executables
+* Triggering the PlatformIO build (from the IDE or via `pio run`) will automatically build the Rust code too, by invoking Cargo for you
+
+
+(*) Build footnote:
+* **Upcoming**: Cargo <-> PlatformIO integration in the form of a `cargo-pio` command that initializes a hybrid Rust/C project built with PlatformIO + Cargo
+* No need to install the ESP-IDF SDK, Espressif Xtensa tooling etc. PlatformIO takes care of all of it - transparently
+* Other benefits: seamless Rust/C multi-language projects
 
 ### Rough steps
 
@@ -29,10 +34,9 @@ git apply ~/...(this path is specific to your env).../rust-esp32-std-hello/pthre
 cd ~/...(this path is specific to your env).../rust-esp32-std-hello
 ```
 * Change lines 123 and 124 in `rust-esp32-std-hello/rust/src/lib.rs` to contain the SSID & password of your wireless network
-* Invoke the PlatformIO build in the app home directory
+* Change `board = nodemcu-32s` in `platformio.ini` to whatever board you are using
+* Invoke the PlatformIO build in the app home directory (with `pio run`) or from the IDE
 * Flash
-
-NOTE: The debug build is currently VERY large (to be investigated), hence why the steps above produce a release build above
 
 ## Running
 
@@ -42,6 +46,7 @@ NOTE: The debug build is currently VERY large (to be investigated), hence why th
 ```
 Hello, world from Rust!
 More complex print [foo, bar]
+Calling into C to get The Answer: 42. Big surprise.
 Rust main thread: ...
 This is thread number 0 ...
 This is thread number 1 ...
