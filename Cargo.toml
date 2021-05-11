@@ -19,15 +19,15 @@ opt-level = "s"
 [dependencies]
 anyhow = {version = "1.0", features = ["backtrace"]}
 log = "0.4"
-#embedded-svc = {version = "*", path = "../../embedded-svc"}
+#embedded-svc = {version = "*", path = "../embedded-svc"}
 embedded-svc = {version = "*", git = "https://github.com/ivmarkov/embedded-svc.git"}
-#esp-idf-svc = {version = "*", path = "../../esp-idf-svc"}
-esp-idf-svc = {version = "*", git = "https://github.com/ivmarkov/esp-idf-svc.git"}
+esp-idf-svc = {version = "*", path = "../esp-idf-svc"}
+#esp-idf-svc = {version = "*", git = "https://github.com/ivmarkov/esp-idf-svc.git"}
 #rocket = "0.4.6"
 #indexmap = "=1.2" # Rocket 0.4.6 fails to compile with later versions...
 
 [patch.crates-io]
-#backtrace = {version = "0.3.56", path = "../../backtrace-rs"}
+#backtrace = {version = "0.3.56", path = "../backtrace-rs"}
 backtrace = {version = "0.3.56", git = "https://github.com/ivmarkov/backtrace-rs.git", branch = "esp-idf"}
 time = {git = "https://github.com/ivmarkov/time.git", branch = "master"}
 getrandom = {git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1"}
