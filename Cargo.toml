@@ -21,8 +21,8 @@ anyhow = {version = "1.0", features = ["backtrace"]}
 log = "0.4"
 #embedded-svc = {version = "*", path = "../embedded-svc"}
 embedded-svc = {version = "*", git = "https://github.com/ivmarkov/embedded-svc.git"}
-esp-idf-svc = {version = "*", path = "../esp-idf-svc"}
-#esp-idf-svc = {version = "*", git = "https://github.com/ivmarkov/esp-idf-svc.git"}
+#esp-idf-svc = {version = "*", path = "../esp-idf-svc"}
+esp-idf-svc = {version = "*", git = "https://github.com/ivmarkov/esp-idf-svc.git"}
 #rocket = "0.4.6"
 #indexmap = "=1.2" # Rocket 0.4.6 fails to compile with later versions...
 
