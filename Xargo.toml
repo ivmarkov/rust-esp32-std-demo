@@ -1,2 +1,0 @@
-[target.xtensa-esp32-none-elf.dependencies.std]
-features = []

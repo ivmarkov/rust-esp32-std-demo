@@ -2,5 +2,6 @@
 target = "xtensa-esp32-none-elf"
 
 [unstable]
+extra-link-arg = true
 build-std = ["std", "panic_abort"]
 build-std-features = ["panic_immediate_abort"]
