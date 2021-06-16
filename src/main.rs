@@ -1,6 +1,5 @@
 #![feature(unboxed_closures)]
 #![feature(proc_macro_hygiene, decl_macro)]
-//#[macro_use] extern crate rocket;
 
 use std::{env, sync::Arc, time::*};
 use std::thread;
@@ -148,7 +147,7 @@ fn main() -> Result<()> {
 
     // Uncomment this if you have a TTGO board
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
-    let _gfx = gfx_hello_world()?;
+    // let _gfx = gfx_hello_world()?;
 
     let _wifi = wifi()?;
 
@@ -169,15 +168,6 @@ fn simple_playground() {
     children.push("foo");
     children.push("bar");
     println!("More complex print {:?}", children);
-
-    // // Check calling into C (more of a Cargo <-> PlatfromIO hybrid project demo than anything else)
-
-    // extern "C" {
-    //     fn get_magic_number() -> i32;
-    // }
-
-    // let magic_number = unsafe {get_magic_number()};
-    // println!("Calling into C to get The Answer: {}. Big surprise.", magic_number);
 }
 
 fn threads_playground() {
@@ -293,20 +283,6 @@ fn httpd() -> Result<idf::Server> {
         .start(&Default::default())
 }
 
-// fn rocket() {
-//     println!("Igniting Rocket...");
-//     thread::spawn(move || { // In a separate thread for now, because the main thread stack is only 3K, which is not enough
-//         #[get("/")]
-//         fn index() -> &'static str {
-//             "Hello, world!"
-//         }
-
-//         rocket::ignite().mount("/", routes![index]).launch();
-//     })
-//     .join()
-//     .unwrap();
-// }
-
 fn wifi() -> Result<EspWifi> {
     let mut wifi = EspWifi::new(
         Arc::new(EspNetif::new()?),
@@ -316,8 +292,8 @@ fn wifi() -> Result<EspWifi> {
     info!("Wifi created");
 
     wifi.set_configuration(&Configuration::Client(ClientConfiguration {
-        ssid: "muci".into(),
-        password: "immz1304".into(),
+        ssid: "user".into(),
+        password: "pass".into(),
         ..Default::default()
     }))?;
 

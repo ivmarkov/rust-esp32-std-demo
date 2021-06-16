@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.1.0"
+version = "0.4.0"
 authors = ["ivmarkov"]
 edition = "2018"
 
@@ -19,24 +19,23 @@ opt-level = "s"
 [dependencies]
 anyhow = {version = "1.0", features = ["backtrace"]}
 log = "0.4"
+esp-idf-sys = {version = "0.4", git = "https://github.com/ivmarkov/esp-idf-sys.git"}
+#esp-idf-sys = { version = "*", path = "../esp-idf-sys"}
+embedded-svc = {version = "0.4", git = "https://github.com/ivmarkov/embedded-svc.git"}
 #embedded-svc = {version = "*", path = "../embedded-svc"}
-embedded-svc = {version = "*", git = "https://github.com/ivmarkov/embedded-svc.git"}
+esp-idf-svc = {version = "0.4", git = "https://github.com/ivmarkov/esp-idf-svc.git"}
 #esp-idf-svc = {version = "*", path = "../esp-idf-svc"}
-esp-idf-svc = {version = "*", git = "https://github.com/ivmarkov/esp-idf-svc.git"}
+esp-idf-hal = {version = "0.4", git = "https://github.com/ivmarkov/esp-idf-hal.git"}
 #esp-idf-hal = {version = "*", path = "../esp-idf-hal"}
-esp-idf-hal = {version = "*", git = "https://github.com/ivmarkov/esp-idf-hal.git"}
 embedded-hal = "*"
 embedded-graphics = "0.6"
 display-interface = "0.4"
 display-interface-spi = "0.4"
 st7789 = "0.5"
-#rocket = "0.4.6"
-#indexmap = "=1.2" # Rocket 0.4.6 fails to compile with later versions...
-#thiserror = "1"
 
 [patch.crates-io]
 #backtrace = {version = "0.3.56", path = "../backtrace-rs"}
 backtrace = {version = "0.3.56", git = "https://github.com/ivmarkov/backtrace-rs.git", branch = "esp-idf"}
-time = {git = "https://github.com/ivmarkov/time.git", branch = "master"}
-getrandom = {git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1"}
+#time = {git = "https://github.com/ivmarkov/time.git", branch = "master"}
+#getrandom = {git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1"}
 #chrono = {git = "https://github.com/ivmarkov/chrono.git", branch = "main"} # TODO

@@ -1,46 +1,40 @@
-# Rust on ESP with STD "Hello, World" app
+# Rust on ESP32 "Hello, World" app
 
-A small demo app demonstrating calling into STD code (threads, console and TCP/IP), as well as using ESP-IDF services through Rust type-safe APIs (WiFi, Ping, Httpd)
+A demo binary crate for the ESP32 and ESP-IDF, which connects to WiFi, drives a small HTTP server and draws on a LED screen.
 
-For more information, check the [STD-enabled Rust compiler port for ESP](https://github.com/ivmarkov/rust).
+Highlights:
+* **Pure Rust and pure Cargo build!** No CMake, no PlatformIO, no C helpers
+  * ... via [esp-idf-sys](https://github.com/ivmarkov/esp-idf-sys) and [cargo-pio](https://github.com/ivmarkov/cargo-pio)
+* **Support for Rust STD** (threads, console, TCP/IP) safe APIs
+  * ... implemented directly in the [Rust ESP32 STD compiler fork](https://github.com/ivmarkov/rus)
+* Rust Safe APIs for various ESP-IDF services like WiFi, Ping, Httpd and logging
+  * ... via [esp-idf-svc](https://github.com/ivmarkov/esp-idf-svc) ([embedded-svc](https://github.com/ivmarkov/embedded-svc) abstractions implemented on top of ESP-IDF)
+* Driving a LED screen with the [embedded-graphics](https://github.com/embedded-graphics/embedded-graphics) Rust crate
+  * via [esp-idf-hal](https://github.com/ivmarkov/esp-idf-hal) ([embedded-hal](https://github.com/rust-embedded/embedded-hal) drivers implemented on top of ESP-IDF)
 
-## Background
+## Build
 
-The app is a simple "Hello, World" web server implememented with the Rust type-safe ESP-IDF bindings from the [embedded-svc](https://github.com/ivmarkov/embedded-svc) and [esp-idf-svc](https://github.com/ivmarkov/esp-idf-svc) projects.
+* Download and install the [prebuilt binaries of the Rust ESP32 STD compiler fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust ESP32 STD compiler fork build instructions](https://github.com/ivmarkov/rust);
+* Switch to the nightly toolchain of Rust (necessary, because we utilize a few unstalbe Cargo features): ```rustup toolchain install nightly```
+* Download and install the ESP32 GCC toolchain for your chip (ESP32, ESP32S2, ESP32C3). **You can utilize [cargo-pio](https://github.com/ivmarkov/cargo-pio) for that**:
+  * ```cargo install cargo-pio --git https://github.com/ivmarkov/cargo-pio```
+  * ```cargo pio installpio```
+  * ```cargo pio printscons --var path --frameworks espidf --platform espressif32 --mcu [ESP32|ESP32S2|ESP32C3]```
+    * Please specify *ONE* of ESP32, ESP32S2 or ESP32C3 in the command line above and below
+  * ```export PATH=`cargo pio -q printscons --var path --frameworks espidf --platform espressif32 --mcu [ESP32|ESP32S2|ESP32C3]`:$PATH```
+* Clone this repo: ```git clone https://github.com/ivmarkov/rust-esp32-std-hello```
+* Enter it: ```cd rust-esp32-std-hello/rust```
+* Change lines 295 and 296 in `rust-esp32-std-hello/rust/src/main.rs` to contain the SSID & password of your wireless network
+* Build: ```cargo build``` or ```cargo build --release```
 
-## Building (*)
+## Flash
 
-* The app uses PlatformIO as a driver for building the ESP-IDF framework, for linking with the Rust code, for flashing, etc. etc.
-* The Rust code is compiled to a static C library, which is then linked against the PlatformIO code to get the final `.elf` & `.bin` executables
-* Triggering the PlatformIO build (from the IDE or via `pio run`) will automatically build the Rust code too, by invoking Cargo for you
+* ```cargo install espflash```
+* ```espflash /dev/ttyUSB0 target/xtensa-esp32-none/debug/rust-esp32-std-hello```
 
+## Monitor
 
-(*) Build footnote:
-* **Upcoming**: Cargo <-> PlatformIO integration in the form of a `cargo-pio` command that initializes a hybrid Rust/C project built with PlatformIO + Cargo
-* No need to install the ESP-IDF SDK, Espressif Xtensa tooling etc. PlatformIO takes care of all of it - transparently
-* Other benefits: seamless Rust/C multi-language projects
-
-### Rough steps
-
-* Clone and build the **STABLE** branch of the [Xtensa STD Rust compiler](https://github.com/ivmarkov/rust) first and make sure it is linked as a custom toolchain in Rustup and activated, as per the instructions there.
-* Clone this repo `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
-* `cd rust-esp32-std-hello/rust`
-* `cargo build --release`
-* `cd ..`
-* Apply a small fix to the ESP-IDF TLS pthread support ([open issue in ESP-IDF](https://github.com/espressif/esp-idf/issues/6643)):
-```
-cd ~/.platformio/packages/framework-espidf
-git apply ~/...(this path is specific to your env).../rust-esp32-std-hello/pthread_destructor_fix.diff
-cd ~/...(this path is specific to your env).../rust-esp32-std-hello
-```
-* Change lines 123 and 124 in `rust-esp32-std-hello/rust/src/lib.rs` to contain the SSID & password of your wireless network
-* Change `board = nodemcu-32s` in `platformio.ini` to whatever board you are using
-* Invoke the PlatformIO build in the app home directory (with `pio run`) or from the IDE
-* Flash
-
-## Running
-
-* Once you flash and run the app, connect to the board UART0 port, e.g. `miniterm --raw /dev/ttyUSB0 115200` or similar
+* Once you flash and run the app, connect to the board UART0 port, e.g. ```miniterm --raw /dev/ttyUSB0 115200``` or similar
 * You should see more or less the following:
 
 ```
