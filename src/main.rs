@@ -1,6 +1,3 @@
-#![feature(unboxed_closures)]
-#![feature(proc_macro_hygiene, decl_macro)]
-
 use std::{env, sync::Arc, time::*};
 use std::thread;
 
@@ -18,7 +15,6 @@ use embedded_svc::httpd::registry::*;
 use embedded_svc::anyerror::*;
 
 use esp_idf_svc::httpd as idf;
-//use esp_idf_svc::httpd::Registry;
 
 use esp_idf_hal::prelude::*;
 use esp_idf_hal::delay;
@@ -34,106 +30,6 @@ use embedded_graphics::fonts::{Font12x16, Text};
 use anyhow::*;
 use log::*;
 use st7789::*;
-
-pub struct SubDrawTarget<D> {
-    target: D,
-    bounds: Rectangle,
-}
-
-impl<D> SubDrawTarget<D> {
-    pub fn new(target: D, bounds: Rectangle) -> Self {
-        Self {
-            target,
-            bounds,
-        }
-    }
-
-    #[inline(always)]
-    fn translate_pixel<C: PixelColor>(&self, pixel: &Pixel<C>) -> Pixel<C> {
-        Pixel(pixel.0 + self.bounds.top_left, pixel.1)
-    }
-
-    #[inline(always)]
-    fn translate<T: Transform>(&self, transformable: &T) -> T {
-        transformable.translate(self.bounds.top_left)
-    }
-}
-
-impl<C: PixelColor, D: DrawTarget<C>> DrawTarget<C> for SubDrawTarget<D> {
-    type Error = D::Error;
-
-    #[inline(always)]
-    fn draw_pixel(&mut self, item: Pixel<C>) -> Result<(), Self::Error> {
-        self.target.draw_pixel(self.translate_pixel(&item))
-    }
-
-    #[inline(always)]
-    fn draw_iter<T>(&mut self, item: T) -> Result<(), Self::Error>
-    where
-        T: IntoIterator<Item = Pixel<C>>,
-    {
-        for pixel in item {
-            self.draw_pixel(pixel)?;
-        }
-
-        Ok(())
-    }
-
-    #[inline(always)]
-    fn size(&self) -> Size {
-        self.bounds.size()
-    }
-
-    #[inline(always)]
-    fn clear(&mut self, color: C) -> Result<(), Self::Error>
-    where
-        Self: Sized,
-    {
-        self.target.clear(color)
-    }
-
-    #[inline(always)]
-    fn draw_line(
-        &mut self,
-        item: &Styled<Line, PrimitiveStyle<C>>,
-    ) -> Result<(), Self::Error> {
-        self.target.draw_line(&self.translate(item))
-    }
-
-    #[inline(always)]
-    fn draw_triangle(
-        &mut self,
-        item: &Styled<Triangle, PrimitiveStyle<C>>,
-    ) -> Result<(), Self::Error> {
-        self.target.draw_triangle(&self.translate(item))
-    }
-
-    #[inline(always)]
-    fn draw_rectangle(
-        &mut self,
-        item: &Styled<Rectangle, PrimitiveStyle<C>>,
-    ) -> Result<(), Self::Error> {
-        self.target.draw_rectangle(&self.translate(item))
-    }
-
-    #[inline(always)]
-    fn draw_circle(
-        &mut self,
-        item: &Styled<Circle, PrimitiveStyle<C>>,
-    ) -> Result<(), Self::Error> {
-        self.target.draw_circle(&self.translate(item))
-    }
-
-    #[inline(always)]
-    fn draw_image<'a, 'b, I>(&mut self, item: &'a Image<'b, I, C>) -> Result<(), Self::Error>
-    where
-        &'b I: IntoPixelIter<C>,
-        I: ImageDimensions,
-        C: PixelColor + From<<C as PixelColor>::Raw>,
-    {
-        self.target.draw_image(&self.translate(item))
-    }
-}
 
 fn main() -> Result<()> {
     simple_playground();
@@ -194,6 +90,7 @@ fn threads_playground() {
     println!("Joins were successful.");
 }
 
+#[allow(dead_code)]
 fn gfx_hello_world() -> Result<
         SubDrawTarget<ST7789<SPIInterfaceNoCS<spi::Master<
             spi::SPI2,
@@ -315,4 +212,106 @@ fn wifi() -> Result<EspWifi> {
     }
 
     Ok(wifi)
+}
+
+/// Some graphics utils necessary to compensate the fact that TTYGO's real display is smaller (and offset-ed) by what the hardware reports
+
+pub struct SubDrawTarget<D> {
+    target: D,
+    bounds: Rectangle,
+}
+
+impl<D> SubDrawTarget<D> {
+    pub fn new(target: D, bounds: Rectangle) -> Self {
+        Self {
+            target,
+            bounds,
+        }
+    }
+
+    #[inline(always)]
+    fn translate_pixel<C: PixelColor>(&self, pixel: &Pixel<C>) -> Pixel<C> {
+        Pixel(pixel.0 + self.bounds.top_left, pixel.1)
+    }
+
+    #[inline(always)]
+    fn translate<T: Transform>(&self, transformable: &T) -> T {
+        transformable.translate(self.bounds.top_left)
+    }
+}
+
+impl<C: PixelColor, D: DrawTarget<C>> DrawTarget<C> for SubDrawTarget<D> {
+    type Error = D::Error;
+
+    #[inline(always)]
+    fn draw_pixel(&mut self, item: Pixel<C>) -> Result<(), Self::Error> {
+        self.target.draw_pixel(self.translate_pixel(&item))
+    }
+
+    #[inline(always)]
+    fn draw_iter<T>(&mut self, item: T) -> Result<(), Self::Error>
+    where
+        T: IntoIterator<Item = Pixel<C>>,
+    {
+        for pixel in item {
+            self.draw_pixel(pixel)?;
+        }
+
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn size(&self) -> Size {
+        self.bounds.size()
+    }
+
+    #[inline(always)]
+    fn clear(&mut self, color: C) -> Result<(), Self::Error>
+    where
+        Self: Sized,
+    {
+        self.target.clear(color)
+    }
+
+    #[inline(always)]
+    fn draw_line(
+        &mut self,
+        item: &Styled<Line, PrimitiveStyle<C>>,
+    ) -> Result<(), Self::Error> {
+        self.target.draw_line(&self.translate(item))
+    }
+
+    #[inline(always)]
+    fn draw_triangle(
+        &mut self,
+        item: &Styled<Triangle, PrimitiveStyle<C>>,
+    ) -> Result<(), Self::Error> {
+        self.target.draw_triangle(&self.translate(item))
+    }
+
+    #[inline(always)]
+    fn draw_rectangle(
+        &mut self,
+        item: &Styled<Rectangle, PrimitiveStyle<C>>,
+    ) -> Result<(), Self::Error> {
+        self.target.draw_rectangle(&self.translate(item))
+    }
+
+    #[inline(always)]
+    fn draw_circle(
+        &mut self,
+        item: &Styled<Circle, PrimitiveStyle<C>>,
+    ) -> Result<(), Self::Error> {
+        self.target.draw_circle(&self.translate(item))
+    }
+
+    #[inline(always)]
+    fn draw_image<'a, 'b, I>(&mut self, item: &'a Image<'b, I, C>) -> Result<(), Self::Error>
+    where
+        &'b I: IntoPixelIter<C>,
+        I: ImageDimensions,
+        C: PixelColor + From<<C as PixelColor>::Raw>,
+    {
+        self.target.draw_image(&self.translate(item))
+    }
 }

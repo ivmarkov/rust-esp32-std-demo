@@ -35,7 +35,7 @@ st7789 = "0.5"
 
 [patch.crates-io]
 #backtrace = {version = "0.3.56", path = "../backtrace-rs"}
-backtrace = {version = "0.3.56", git = "https://github.com/ivmarkov/backtrace-rs.git", branch = "esp-idf"}
+#backtrace = {version = "0.3.56", git = "https://github.com/ivmarkov/backtrace-rs.git", branch = "esp-idf"}
 #time = {git = "https://github.com/ivmarkov/time.git", branch = "master"}
 #getrandom = {git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1"}
 #chrono = {git = "https://github.com/ivmarkov/chrono.git", branch = "main"} # TODO
