@@ -1,12 +1,8 @@
 use std::{env, sync::Arc, time::*};
 use std::thread;
 
-use embedded_graphics::image::Image;
-use esp_idf_svc::nvs::*;
-use esp_idf_svc::netif::*;
-use esp_idf_svc::sysloop::*;
-use esp_idf_svc::ping;
-use esp_idf_svc::wifi::*;
+use anyhow::*;
+use log::*;
 
 use embedded_svc::ping::Ping;
 use embedded_svc::wifi::*;
@@ -14,21 +10,27 @@ use embedded_svc::httpd::*;
 use embedded_svc::httpd::registry::*;
 use embedded_svc::anyerror::*;
 
+use esp_idf_svc::nvs::*;
+use esp_idf_svc::netif::*;
+use esp_idf_svc::sysloop::*;
+use esp_idf_svc::ping;
+use esp_idf_svc::wifi::*;
 use esp_idf_svc::httpd as idf;
 
 use esp_idf_hal::prelude::*;
 use esp_idf_hal::delay;
 use esp_idf_hal::gpio;
 use esp_idf_hal::spi;
+
 use display_interface_spi::SPIInterfaceNoCS;
+
 use embedded_graphics::prelude::*;
 use embedded_graphics::pixelcolor::*;
 use embedded_graphics::primitives::*;
 use embedded_graphics::style::*;
+use embedded_graphics::image::Image;
 use embedded_graphics::fonts::{Font12x16, Text};
 
-use anyhow::*;
-use log::*;
 use st7789::*;
 
 fn main() -> Result<()> {
