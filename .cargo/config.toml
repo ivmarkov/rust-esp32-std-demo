@@ -2,6 +2,13 @@
 target = "xtensa-esp32-none-elf"
 
 [unstable]
+configurable-env = true
 extra-link-arg = true
 build-std = ["std", "panic_abort"]
 build-std-features = ["panic_immediate_abort"]
+
+[env]
+ESP_IDF_SYS_PIO_CONF_0 = { value = "board_build.partitions = partitions.csv" }
+ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
+ESP_IDF_SYS_GLOB_0 = { value = "sdkconfig" }
+ESP_IDF_SYS_GLOB_1 = { value = "partitions.csv" }

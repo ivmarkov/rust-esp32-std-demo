@@ -14,8 +14,11 @@ Highlights:
 
 ## Build
 
+
+* Install the nightly toolchain of Rust (necessary, because we utilize a few unstable Cargo features): ```rustup toolchain install nightly```
+* Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: ```rustup update```
+* Switch to nightly (as per above, necessary for Cargo): ```rustup default nightly```
 * Download and install the [prebuilt binaries of the Rust ESP32 STD compiler fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust ESP32 STD compiler fork build instructions](https://github.com/ivmarkov/rust);
-* Switch to the nightly toolchain of Rust (necessary, because we utilize a few unstalbe Cargo features): ```rustup toolchain install nightly```
 * Download and install the ESP32 GCC toolchain for your chip (ESP32, ESP32S2, ESP32C3). **You can utilize [cargo-pio](https://github.com/ivmarkov/cargo-pio) for that**:
   * ```cargo install cargo-pio --git https://github.com/ivmarkov/cargo-pio```
   * ```cargo pio installpio```
