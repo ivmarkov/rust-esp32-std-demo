@@ -14,17 +14,17 @@ Highlights:
 
 ## Build
 
+**NOTE**: Currently, only ESP32 is supported. ESP32S2 and ESP32C3 are missing atomics support, but this is being [worked on]().
 
 * Install the nightly toolchain of Rust (necessary, because we utilize a few unstable Cargo features): ```rustup toolchain install nightly```
 * Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: ```rustup update```
 * Switch to nightly (as per above, necessary for Cargo): ```rustup default nightly```
 * Download and install the [prebuilt binaries of the Rust ESP32 STD compiler fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust ESP32 STD compiler fork build instructions](https://github.com/ivmarkov/rust);
-* Download and install the ESP32 GCC toolchain for your chip (ESP32, ESP32S2, ESP32C3). **You can utilize [cargo-pio](https://github.com/ivmarkov/cargo-pio) for that**:
+* Download and install the ESP32 GCC toolchain for ESP32. **You can utilize [cargo-pio](https://github.com/ivmarkov/cargo-pio) for that**:
   * ```cargo install cargo-pio --git https://github.com/ivmarkov/cargo-pio```
   * ```cargo pio installpio```
-  * ```cargo pio printscons --var path --frameworks espidf --platform espressif32 --mcu [ESP32|ESP32S2|ESP32C3]```
-    * Please specify *ONE* of ESP32, ESP32S2 or ESP32C3 in the command line above and below
-  * ```export PATH=`cargo pio -q printscons --var path --frameworks espidf --platform espressif32 --mcu [ESP32|ESP32S2|ESP32C3]`:$PATH```
+  * ```cargo pio printscons --var path --frameworks espidf --platform espressif32 --mcu ESP32```
+  * ```export PATH=`cargo pio -q printscons --var path --frameworks espidf --platform espressif32 --mcu ESP32`:$PATH```
 * Clone this repo: ```git clone https://github.com/ivmarkov/rust-esp32-std-hello```
 * Enter it: ```cd rust-esp32-std-hello/rust```
 * Change lines 295 and 296 in `rust-esp32-std-hello/rust/src/main.rs` to contain the SSID & password of your wireless network
