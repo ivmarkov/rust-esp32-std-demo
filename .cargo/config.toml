@@ -8,7 +8,13 @@ build-std = ["std", "panic_abort"]
 build-std-features = ["panic_immediate_abort"]
 
 [env]
-ESP_IDF_SYS_PIO_CONF_0 = { value = "board_build.partitions = partitions.csv" }
 ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
-ESP_IDF_SYS_GLOB_0 = { value = "sdkconfig" }
-ESP_IDF_SYS_GLOB_1 = { value = "partitions.csv" }
+
+# Uncomment if you plan to place and use a custom "sdkconfig" at the root of the project
+#ESP_IDF_SYS_GLOB_0 = { value = "/sdkconfig" }
+
+# Uncomment both lines below if you plan to place and use a custom partition table, "partitions.csv" at the root of this project
+# Note that the espflash utility is always flashing with its own partition table, which contains a single factory app of 3M max,
+# so you should use the esptool.py utility to flash the custom partition table and the app
+#ESP_IDF_SYS_GLOB_1 = { value = "/partitions.csv" }
+#ESP_IDF_SYS_PIO_CONF_0 = { value = "board_build.partitions = partitions.csv" }
