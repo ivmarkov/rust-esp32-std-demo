@@ -26,8 +26,8 @@ Highlights:
   * ```cargo pio printscons --var path --frameworks espidf --platform espressif32 --mcu ESP32```
   * ```export PATH=`cargo pio -q printscons --var path --frameworks espidf --platform espressif32 --mcu ESP32`:$PATH```
 * Clone this repo: ```git clone https://github.com/ivmarkov/rust-esp32-std-hello```
-* Enter it: ```cd rust-esp32-std-hello/rust```
-* Change lines 295 and 296 in `rust-esp32-std-hello/rust/src/main.rs` to contain the SSID & password of your wireless network
+* Enter it: ```cd rust-esp32-std-hello```
+* Change lines 194 and 195 in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
 * Build: ```cargo build``` or ```cargo build --release```
 
 ## Flash

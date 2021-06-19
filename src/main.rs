@@ -191,7 +191,7 @@ fn wifi() -> Result<EspWifi> {
     info!("Wifi created");
 
     wifi.set_configuration(&Configuration::Client(ClientConfiguration {
-        ssid: "user".into(),
+        ssid: "ssid".into(),
         password: "pass".into(),
         ..Default::default()
     }))?;
