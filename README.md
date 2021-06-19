@@ -33,8 +33,9 @@ Highlights:
 ## Flash
 
 * ```cargo install espflash```
-* ```espflash /dev/ttyUSB0 target/xtensa-esp32-none/debug/rust-esp32-std-hello```
-
+* ```espflash /dev/ttyUSB0 target/xtensa-esp32-none-elf/debug/rust-esp32-std-hello```
+* Replace `dev/tttyUSB0` above with the USB port where you've connected the board
+* If espflash complains with `Error: IO error while using serial port: Operation timed out` or with error `Error: Failed to connect to the device`, just retry the flash operation
 ## Monitor
 
 * Once you flash and run the app, connect to the board UART0 port, e.g. ```miniterm --raw /dev/ttyUSB0 115200``` or similar
