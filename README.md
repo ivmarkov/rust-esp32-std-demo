@@ -24,7 +24,8 @@ Highlights:
   * ```cargo install cargo-pio --git https://github.com/ivmarkov/cargo-pio```
 * Clone this repo: ```git clone https://github.com/ivmarkov/rust-esp32-std-hello```
 * Enter it: ```cd rust-esp32-std-hello```
-* Change lines 194 and 195 in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
+* Change **lines 194 and 195** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
+* (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 48** to be greeted with a `Hello Rust!` message on the board's LED screen
 * Build: ```cargo build``` or ```cargo build --release```
 
 ## Flash
