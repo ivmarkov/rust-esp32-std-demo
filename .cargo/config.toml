@@ -1,6 +1,9 @@
 [build]
 target = "xtensa-esp32-none-elf"
 
+[target.xtensa-esp32-none-elf]
+linker = "cargo-pio-link"
+
 [unstable]
 configurable-env = true
 extra-link-arg = true
@@ -11,10 +14,13 @@ build-std-features = ["panic_immediate_abort"]
 ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
 
 # Uncomment if you plan to place and use a custom "sdkconfig" at the root of the project
+# NOTE: You need latest Cargo nightly for that, and the rustc toolchain prebuilt by Espressif currently comes with an older version of Cargo that you have to remove
+# The older Cargo version spits out `warning:Unknown argument "extra-link-arg = true"`
 #ESP_IDF_SYS_GLOB_0 = { value = "/sdkconfig" }
 
 # Uncomment both lines below if you plan to place and use a custom partition table, "partitions.csv" at the root of this project
 # Note that the espflash utility is always flashing with its own partition table, which contains a single factory app of 3M max,
 # so you should use the esptool.py utility to flash the custom partition table and the app
+# Also see above regarding the Cargo version
 #ESP_IDF_SYS_GLOB_1 = { value = "/partitions.csv" }
 #ESP_IDF_SYS_PIO_CONF_0 = { value = "board_build.partitions = partitions.csv" }

@@ -20,11 +20,8 @@ Highlights:
 * Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: ```rustup update```
 * Switch to nightly (as per above, necessary for Cargo): ```rustup default nightly```
 * Download and install the [prebuilt binaries of the Rust ESP32 STD compiler fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust ESP32 STD compiler fork build instructions](https://github.com/ivmarkov/rust);
-* Download and install the ESP32 GCC toolchain for ESP32. **You can utilize [cargo-pio](https://github.com/ivmarkov/cargo-pio) for that**:
+* The build is using the `cargo-pio-link` linker wrapper, so install [cargo-pio](https://github.com/ivmarkov/cargo-pio):
   * ```cargo install cargo-pio --git https://github.com/ivmarkov/cargo-pio```
-  * ```cargo pio installpio```
-  * ```cargo pio printscons --var path --frameworks espidf --platform espressif32 --mcu ESP32```
-  * ```export PATH=`cargo pio -q printscons --var path --frameworks espidf --platform espressif32 --mcu ESP32`:$PATH```
 * Clone this repo: ```git clone https://github.com/ivmarkov/rust-esp32-std-hello```
 * Enter it: ```cd rust-esp32-std-hello```
 * Change lines 194 and 195 in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network

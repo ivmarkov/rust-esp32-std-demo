@@ -19,26 +19,19 @@ opt-level = "s"
 [dependencies]
 anyhow = {version = "1.0", features = ["backtrace"]}
 log = "0.4"
-esp-idf-sys = {version = "0.5", git = "https://github.com/ivmarkov/esp-idf-sys.git"}
+esp-idf-sys = {version = "0.6", git = "https://github.com/ivmarkov/esp-idf-sys.git"}
 #esp-idf-sys = { version = "*", path = "../esp-idf-sys"}
 embedded-svc = {version = "0.4", git = "https://github.com/ivmarkov/embedded-svc.git"}
 #embedded-svc = {version = "*", path = "../embedded-svc"}
-esp-idf-svc = {version = "0.5", git = "https://github.com/ivmarkov/esp-idf-svc.git", features = ["binstart"]}
+esp-idf-svc = {version = "0.6", git = "https://github.com/ivmarkov/esp-idf-svc.git", features = ["binstart"]}
 #esp-idf-svc = {version = "*", path = "../esp-idf-svc", features = ["binstart"]}
-esp-idf-hal = {version = "0.5", git = "https://github.com/ivmarkov/esp-idf-hal.git"}
+esp-idf-hal = {version = "0.6", git = "https://github.com/ivmarkov/esp-idf-hal.git"}
 #esp-idf-hal = {version = "*", path = "../esp-idf-hal"}
 embedded-hal = "*"
 embedded-graphics = "0.6"
 display-interface = "0.4"
 display-interface-spi = "0.4"
 st7789 = "0.5"
-
-[patch.crates-io]
-# Use a patched version of Rust's LibC which does not have a #[link("c")] attribute for os = "none" and vendor = "espressif"
-# Important, because the ESP-IDF SDK is very sensitive to libraries' linkage order,
-# and the "-lc" link flag should come _after_ their newlib symbol overrides
-# The version should be precisely 0.2.79, because this is what Rust 1.50.0 uses
-libc = { version = "0.2.79", git = "https://github.com/ivmarkov/libc", branch = "version_0.2.79" }
 
 #backtrace = {version = "0.3.56", path = "../backtrace-rs"}
 #backtrace = {version = "0.3.56", git = "https://github.com/ivmarkov/backtrace-rs.git", branch = "esp-idf"}
