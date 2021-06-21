@@ -14,7 +14,7 @@ Highlights:
 
 ## Build
 
-**NOTE**: Currently, only ESP32 is supported. ESP32S2 and ESP32C3 are missing atomics support, but this is being [worked on]().
+**NOTE**: Currently, only ESP32 is supported. ESP32S2 and ESP32C3 are missing atomics support, but this is being [worked on](https://github.com/espressif/rust-esp32-example/issues/3).
 
 * Install the nightly toolchain of Rust (necessary, because we utilize a few unstable Cargo features): ```rustup toolchain install nightly```
 * Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: ```rustup update```
