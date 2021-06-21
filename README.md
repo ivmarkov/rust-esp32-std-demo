@@ -34,6 +34,16 @@ Highlights:
 * ```espflash /dev/ttyUSB0 target/xtensa-esp32-none-elf/debug/rust-esp32-std-hello```
 * Replace `dev/tttyUSB0` above with the USB port where you've connected the board
 * If espflash complains with `Error: IO error while using serial port: Operation timed out` or with error `Error: Failed to connect to the device`, just retry the flash operation
+
+## Faster flashing
+
+* You can also flash with the [esptool.py]() utility which is part of the Espressif toolset
+* Use the instructions below **only** if you have flashed successfully with `espflash` at least once, or else you might not have a valid bootloader and partition table!
+* The instructions below only (re)flash the application image, as the (one and only) factory image starting from 0x10000 in the partition table!
+* Install esptool: ```pip install esptool```
+* (After each cargo build) Convert the elf image to binary: ```esptool.py --chip esp32 elf2image target/xtensa-esp32-none-elf/debug/rust-esp32-std-hello```
+* (After each cargo build) Flash the resulting binary: ```esptool.py --chip esp32 -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x10000 target/xtensa-esp32-none-elf/debug/rust-esp32-std-hello.bin```
+
 ## Monitor
 
 * Once you flash and run the app, connect to the board UART0 port, e.g. ```miniterm --raw /dev/ttyUSB0 115200``` or similar
