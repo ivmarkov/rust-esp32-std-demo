@@ -160,7 +160,6 @@ I (13561) esp_idf_svc::httpd: Registered Httpd IDF server handler Get for URI "/
 I (13571) esp_idf_svc::httpd: Registered Httpd IDF server handler Get for URI "/bar"
 ```
 
-- NOTE: If you have not applied the pthread patch correctly, the app will CRASH just after the line which says "About to join the threads. If ESP-IDF was patched successfully, joining will NOT crash".
 - If the app starts successfully, it should be listening on the printed IP address from the WiFi connection logs, port 80.
 - Open a browser, and navigate to one of these:
 - `http://<printed-ip-address>`
