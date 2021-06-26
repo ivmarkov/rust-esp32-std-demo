@@ -39,7 +39,7 @@ Highlights:
 
 ## Faster flashing
 
-* You can also flash with the [esptool.py]() utility which is part of the Espressif toolset
+* You can also flash with the [esptool.py](https://github.com/espressif/esptool) utility which is part of the Espressif toolset
 * Use the instructions below **only** if you have flashed successfully with `espflash` at least once, or else you might not have a valid bootloader and partition table!
 * The instructions below only (re)flash the application image, as the (one and only) factory image starting from 0x10000 in the partition table!
 * Install esptool: ```pip install esptool```
