@@ -20,7 +20,7 @@ Highlights:
 - Install the nightly toolchain of Rust (necessary, because we utilize a few unstable Cargo features): `rustup toolchain install nightly`
 - Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: `rustup update`
 - Switch to nightly (as per above, necessary for Cargo): `rustup default nightly`
-- Download and install the [prebuilt binaries of the Rust ESP32 STD compiler fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust ESP32 STD compiler fork build instructions](https://github.com/ivmarkov/rust);
+- Download and install the [prebuilt binaries of the Rust ESP32 STD compiler fork and the Espressif LLVM clang fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust ESP32 STD compiler fork & Espressif LLVM clang fork build instructions](https://github.com/ivmarkov/rust);
 - The build is using the `cargo-pio-link` linker wrapper, so install [cargo-pio](https://github.com/ivmarkov/cargo-pio):
   - `cargo install cargo-pio --git https://github.com/ivmarkov/cargo-pio`
 - Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
