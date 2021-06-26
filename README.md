@@ -3,53 +3,56 @@
 A demo binary crate for the ESP32 and ESP-IDF, which connects to WiFi, drives a small HTTP server and draws on a LED screen.
 
 Highlights:
-* **Pure Rust and pure Cargo build!** No CMake, no PlatformIO, no C helpers
-  * ... via [esp-idf-sys](https://github.com/ivmarkov/esp-idf-sys) and [cargo-pio](https://github.com/ivmarkov/cargo-pio)
-* **Support for Rust STD** (threads, console, TCP/IP) safe APIs
-  * ... implemented directly in the [Rust ESP32 STD compiler fork](https://github.com/ivmarkov/rus)
-* Rust Safe APIs for various ESP-IDF services like WiFi, Ping, Httpd and logging
-  * ... via [esp-idf-svc](https://github.com/ivmarkov/esp-idf-svc) ([embedded-svc](https://github.com/ivmarkov/embedded-svc) abstractions implemented on top of ESP-IDF)
-* Driving a LED screen with the [embedded-graphics](https://github.com/embedded-graphics/embedded-graphics) Rust crate
-  * via [esp-idf-hal](https://github.com/ivmarkov/esp-idf-hal) ([embedded-hal](https://github.com/rust-embedded/embedded-hal) drivers implemented on top of ESP-IDF)
+
+- **Pure Rust and pure Cargo build!** No CMake, no PlatformIO, no C helpers
+  - ... via [esp-idf-sys](https://github.com/ivmarkov/esp-idf-sys) and [cargo-pio](https://github.com/ivmarkov/cargo-pio)
+- **Support for Rust STD** (threads, console, TCP/IP) safe APIs
+  - ... implemented directly in the [Rust ESP32 STD compiler fork](https://github.com/ivmarkov/rus)
+- Rust Safe APIs for various ESP-IDF services like WiFi, Ping, Httpd and logging
+  - ... via [esp-idf-svc](https://github.com/ivmarkov/esp-idf-svc) ([embedded-svc](https://github.com/ivmarkov/embedded-svc) abstractions implemented on top of ESP-IDF)
+- Driving a LED screen with the [embedded-graphics](https://github.com/embedded-graphics/embedded-graphics) Rust crate
+  - via [esp-idf-hal](https://github.com/ivmarkov/esp-idf-hal) ([embedded-hal](https://github.com/rust-embedded/embedded-hal) drivers implemented on top of ESP-IDF)
 
 ## Build
 
 **NOTE**: Currently, only ESP32 is supported. ESP32S2 and ESP32C3 are missing atomics support, but this is being [worked on](https://github.com/espressif/rust-esp32-example/issues/3).
 
-* Install the nightly toolchain of Rust (necessary, because we utilize a few unstable Cargo features): ```rustup toolchain install nightly```
-* Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: ```rustup update```
-* Switch to nightly (as per above, necessary for Cargo): ```rustup default nightly```
-* Download and install the [prebuilt binaries of the Rust ESP32 STD compiler fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust ESP32 STD compiler fork build instructions](https://github.com/ivmarkov/rust);
-* The build is using the `cargo-pio-link` linker wrapper, so install [cargo-pio](https://github.com/ivmarkov/cargo-pio):
-  * ```cargo install cargo-pio --git https://github.com/ivmarkov/cargo-pio```
-* Clone this repo: ```git clone https://github.com/ivmarkov/rust-esp32-std-hello```
-* Enter it: ```cd rust-esp32-std-hello```
-* Change **lines 194 and 195** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
-* (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 48** to be greeted with a `Hello Rust!` message on the board's LED screen
-* Build: ```cargo build``` or ```cargo build --release```
+- Install the nightly toolchain of Rust (necessary, because we utilize a few unstable Cargo features): `rustup toolchain install nightly`
+- Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: `rustup update`
+- Switch to nightly (as per above, necessary for Cargo): `rustup default nightly`
+- Download and install the [prebuilt binaries of the Rust ESP32 STD compiler fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust ESP32 STD compiler fork build instructions](https://github.com/ivmarkov/rust);
+- The build is using the `cargo-pio-link` linker wrapper, so install [cargo-pio](https://github.com/ivmarkov/cargo-pio):
+  - `cargo install cargo-pio --git https://github.com/ivmarkov/cargo-pio`
+- Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
+- Enter it: `cd rust-esp32-std-hello`
+- Change **lines 194 and 195** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
+- (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 48** to be greeted with a `Hello Rust!` message on the board's LED screen
+- Build: `cargo build` or `cargo build --release`
 
 ## Flash
 
-* ```cargo install espflash```
-* ```espflash /dev/ttyUSB0 target/xtensa-esp32-none-elf/debug/rust-esp32-std-hello```
-* Replace `dev/tttyUSB0` above with the USB port where you've connected the board
-* If espflash complains with `Error: IO error while using serial port: Operation timed out` or with error `Error: Failed to connect to the device`, just retry the flash operation
+- `cargo install espflash`
+- `espflash /dev/ttyUSB0 target/xtensa-esp32-none-elf/debug/rust-esp32-std-hello`
+- Replace `dev/tttyUSB0` above with the USB port where you've connected the board
+- If espflash complains with `Error: IO error while using serial port: Operation timed out` or with error `Error: Failed to connect to the device`, just retry the flash operation
 
 **NOTE**: The above commands do use [`espflash`](https://github.com/esp-rs/espflash/tree/master/espflash) and NOT [`cargo espflash`](https://github.com/esp-rs/espflash/tree/master/cargo-espflash), even though both can be installed via Cargo. `cargo espflash` is essentially `espflash` but it also builds the project prior to attempting to flash the resulting ELF binary. Currently, `cargo espflash` does not work for this project due to this [issue](https://github.com/esp-rs/espflash/issues/19).
 
 ## Faster flashing
 
-* You can also flash with the [esptool.py](https://github.com/espressif/esptool) utility which is part of the Espressif toolset
-* Use the instructions below **only** if you have flashed successfully with `espflash` at least once, or else you might not have a valid bootloader and partition table!
-* The instructions below only (re)flash the application image, as the (one and only) factory image starting from 0x10000 in the partition table!
-* Install esptool: ```pip install esptool```
-* (After each cargo build) Convert the elf image to binary: ```esptool.py --chip esp32 elf2image target/xtensa-esp32-none-elf/debug/rust-esp32-std-hello```
-* (After each cargo build) Flash the resulting binary: ```esptool.py --chip esp32 -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x10000 target/xtensa-esp32-none-elf/debug/rust-esp32-std-hello.bin```
+- You can also flash with the [esptool.py](https://github.com/espressif/esptool) utility which is part of the Espressif toolset
+- Use the instructions below **only** if you have flashed successfully with `espflash` at least once, or else you might not have a valid bootloader and partition table!
+- The instructions below only (re)flash the application image, as the (one and only) factory image starting from 0x10000 in the partition table!
+- Install esptool: `pip install esptool`
+- (After each cargo build) Convert the elf image to binary: `esptool.py --chip esp32 elf2image target/xtensa-esp32-none-elf/debug/rust-esp32-std-hello`
+- (After each cargo build) Flash the resulting binary: `esptool.py --chip esp32 -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x10000 target/xtensa-esp32-none-elf/debug/rust-esp32-std-hello.bin`
 
 ## Monitor
 
-* Once you flash and run the app, connect to the board UART0 port, e.g. ```miniterm --raw /dev/ttyUSB0 115200``` or similar
-* You should see more or less the following:
+- Once flashed, the board can be connected with any suitable serial monitor, e.g. [espmonitor](https://github.com/kelnos/espmonitor) or `miniterm`, on its UART0 port
+  - Miniterm: `miniterm --raw /dev/ttyUSB0 115200`
+  - ESPMonitor: `cargo espmonitor --speed 115200 /dev/ttyUSB0`
+- You should see more or less the following:
 
 ```
 Hello, world from Rust!
@@ -157,9 +160,9 @@ I (13561) esp_idf_svc::httpd: Registered Httpd IDF server handler Get for URI "/
 I (13571) esp_idf_svc::httpd: Registered Httpd IDF server handler Get for URI "/bar"
 ```
 
-* NOTE: If you have not applied the pthread patch correctly, the app will CRASH just after the line which says "About to join the threads. If ESP-IDF was patched successfully, joining will NOT crash".
-* If the app starts successfully, it should be listening on the printed IP address from the WiFi connection logs, port 80.
-* Open a browser, and navigate to one of these:
-* `http://<printed-ip-address>`
-* `http://<printed-ip-address>/foo?key=value`
-* `http://<printed-ip-address>/bar`
+- NOTE: If you have not applied the pthread patch correctly, the app will CRASH just after the line which says "About to join the threads. If ESP-IDF was patched successfully, joining will NOT crash".
+- If the app starts successfully, it should be listening on the printed IP address from the WiFi connection logs, port 80.
+- Open a browser, and navigate to one of these:
+- `http://<printed-ip-address>`
+- `http://<printed-ip-address>/foo?key=value`
+- `http://<printed-ip-address>/bar`
