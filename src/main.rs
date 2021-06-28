@@ -203,7 +203,7 @@ fn wifi() -> Result<EspWifi> {
     if let Status(ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(ip_settings))), _) = status {
         info!("Wifi connected, about to do some pings");
 
-        let ping_summary = ping::EspPing::default().ping_summary(ip_settings.subnet.gateway, &Default::default())?;
+        let ping_summary = ping::EspPing::default().ping(ip_settings.subnet.gateway, &Default::default())?;
         if ping_summary.transmitted != ping_summary.received {
             bail!("Pinging gateway {} resulted in timeouts", ip_settings.subnet.gateway);
         }
