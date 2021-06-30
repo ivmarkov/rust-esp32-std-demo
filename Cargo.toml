@@ -19,13 +19,13 @@ opt-level = "s"
 [dependencies]
 anyhow = {version = "1.0", features = ["backtrace"]}
 log = "0.4"
-esp-idf-sys = {version = "0.8", git = "https://github.com/ivmarkov/esp-idf-sys.git"}
+esp-idf-sys = {version = "0.9", git = "https://github.com/ivmarkov/esp-idf-sys.git"}
 #esp-idf-sys = { version = "*", path = "../esp-idf-sys"}
 embedded-svc = {version = "0.6", git = "https://github.com/ivmarkov/embedded-svc.git"}
 #embedded-svc = {version = "*", path = "../embedded-svc"}
-esp-idf-svc = {version = "0.8", git = "https://github.com/ivmarkov/esp-idf-svc.git", features = ["binstart"]}
+esp-idf-svc = {version = "0.9", git = "https://github.com/ivmarkov/esp-idf-svc.git", features = ["binstart"]}
 #esp-idf-svc = {version = "*", path = "../esp-idf-svc", features = ["binstart"]}
-esp-idf-hal = {version = "0.8", git = "https://github.com/ivmarkov/esp-idf-hal.git"}
+esp-idf-hal = {version = "0.9", git = "https://github.com/ivmarkov/esp-idf-hal.git"}
 #esp-idf-hal = {version = "*", path = "../esp-idf-hal"}
 embedded-hal = "0.2"
 embedded-graphics = "0.6"
