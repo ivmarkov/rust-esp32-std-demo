@@ -1,7 +1,15 @@
 [build]
 target = "xtensa-esp32-none-elf"
+#target = "xtensa-esp32s2-none-elf"
+#target = "riscv32imc-esp32c3-none-elf" # TODO: ESP-IDF V4.3 needs to be supported first
 
 [target.xtensa-esp32-none-elf]
+linker = "cargo-pio-link"
+
+[target.xtensa-esp32s2-none-elf]
+linker = "cargo-pio-link"
+
+[target.riscv32imc-esp32c3-none-elf]
 linker = "cargo-pio-link"
 
 [unstable]
