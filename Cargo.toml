@@ -16,6 +16,13 @@ opt-level = "z"
 [profile.dev]
 opt-level = "s"
 
+[patch.crates-io]
+# If you plan on using a riscv32 MCU like ESP32C3:
+#   Always include this patch in your workspace / final binary crate as it is patching libc
+#   to support the riscv32 architecture with newlib. A similar patch for the xtensa architecture
+#   (ESP32, ESP32S2, ESP32S3) is already in libc since libc 0.2.76
+libc = { git = "https://github.com/ivmarkov/libc.git", branch = "version_0.2.98" }
+
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
