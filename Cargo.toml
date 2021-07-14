@@ -35,10 +35,11 @@ esp-idf-svc = {version = "0.15", git = "https://github.com/ivmarkov/esp-idf-svc.
 esp-idf-hal = {version = "0.15", git = "https://github.com/ivmarkov/esp-idf-hal.git"}
 #esp-idf-hal = {version = "*", path = "../esp-idf-hal"}
 embedded-hal = "0.2"
-embedded-graphics = "0.6"
+embedded-graphics = "0.7"
 display-interface = "0.4"
 display-interface-spi = "0.4"
-st7789 = "0.5"
+st7789 = "0.6"
+ili9341 = { version = "0.5", git = "https://github.com/ivmarkov/ili9341-rs" }
 
 #backtrace = {version = "0.3.56", path = "../backtrace-rs"}
 #backtrace = {version = "0.3.56", git = "https://github.com/ivmarkov/backtrace-rs.git", branch = "esp-idf"}

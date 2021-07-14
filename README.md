@@ -2,6 +2,8 @@
 
 A demo binary crate for the ESP32 and ESP-IDF, which connects to WiFi, drives a small HTTP server and draws on a LED screen.
 
+**NEWS: [Preliminary support for ESP32-S2 and ESP32-C3!](#building-for-esp32-s2-and-esp32-c3)**
+
 Highlights:
 
 - **Pure Rust and pure Cargo build!** No CMake, no PlatformIO, no C helpers
@@ -15,7 +17,7 @@ Highlights:
 
 ## Build
 
-**NOTE**: Currently, only ESP32 is supported. ESP32S2 and ESP32C3 are missing atomics support, but this is being [worked on](https://github.com/espressif/rust-esp32-example/issues/3).
+**NOTE**: For build instructions for ESP32-S2 and ESP32-C3 please see the next section.
 
 - Install the nightly toolchain of Rust (necessary, because we utilize a few unstable Cargo features): `rustup toolchain install nightly`
 - Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: `rustup update`
@@ -25,9 +27,18 @@ Highlights:
   - `cargo install cargo-pio --git https://github.com/ivmarkov/cargo-pio`
 - Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
 - Enter it: `cd rust-esp32-std-hello`
-- Change **lines 194 and 195** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
-- (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 48** to be greeted with a `Hello Rust!` message on the board's LED screen
+- Change **lines 233 and 234** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
+- (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 47** to be greeted with a `Hello Rust!` message on the board's LED screen
+- (Only if you happen to have a [ESP32-S2-Kaluga-1 board](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit.html)): Uncomment **line 49** to be greeted with a `Hello Rust!` message on the board's LED screen
 - Build: `cargo build` or `cargo build --release`
+
+## Building for ESP32-S2 and ESP32-C3
+
+* Instead of installing the [prebuilt binaries of the Rust ESP32 STD compiler fork and the Espressif LLVM clang fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md), you need to build the upcoming [`stable_V1.53`](https://github.com/ivmarkov/rust/tree/stable_V1.53.0) branch of the Rust STD compiler fork:
+  * Follow the instructions in the README.md file in that branch. They are actually the same as the `stable` branch build instructions, the only difference is which branch you checkout for building
+  * This branch is to replace the current Rust STD `stable` branch once all issues are completely ironed out
+* To configure the demo for your particular board, please uncomment either the [Rust ESP32-S2 target](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L4), or the [Rust ESP32-C3 target](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L5) and comment the others
+* Other than these two changes, please follow the build instructions from above
 
 ## Flash
 
@@ -37,6 +48,8 @@ Highlights:
 - If espflash complains with `Error: IO error while using serial port: Operation timed out` or with error `Error: Failed to connect to the device`, just retry the flash operation
 
 **NOTE**: The above commands do use [`espflash`](https://github.com/esp-rs/espflash/tree/master/espflash) and NOT [`cargo espflash`](https://github.com/esp-rs/espflash/tree/master/cargo-espflash), even though both can be installed via Cargo. `cargo espflash` is essentially `espflash` but it also builds the project prior to attempting to flash the resulting ELF binary. Currently, `cargo espflash` does not work for this project due to this [issue](https://github.com/esp-rs/espflash/issues/19).
+
+**NOTE**: `espflash` currently supports only ESP32. For ESP32-S2 and ESP32-C3 you have to use the alternative flashing method below, passing as argument `--chip esp32s2` or `--chip esp32c3` respectively.
 
 ## Faster flashing
 

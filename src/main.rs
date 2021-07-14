@@ -25,13 +25,12 @@ use esp_idf_hal::spi;
 use display_interface_spi::SPIInterfaceNoCS;
 
 use embedded_graphics::prelude::*;
-use embedded_graphics::pixelcolor::*;
+use embedded_graphics::mono_font::{ascii::FONT_10X20, MonoTextStyle};
+use embedded_graphics::text::*;
 use embedded_graphics::primitives::*;
-use embedded_graphics::style::*;
-use embedded_graphics::image::Image;
-use embedded_graphics::fonts::{Font12x16, Text};
 
-use st7789::*;
+use st7789;
+use ili9341;
 
 fn main() -> Result<()> {
     simple_playground();
@@ -43,9 +42,13 @@ fn main() -> Result<()> {
 
     env::set_var("RUST_BACKTRACE", "1"); // Get some nice backtraces from Anyhow
 
-    // Uncomment this if you have a TTGO board
+    // Uncomment this if you have a TTGO ESP32 board
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
-    // let _gfx = gfx_hello_world()?;
+    // ttygo_hello_world()?;
+
+    // ... or uncomment this if you have a Kaluga-1 ESP32-S2 board
+    // For other boards, you might have to use a different embedded-graphics driver and pin configuration
+    // kaluga_hello_world(true)?;
 
     let _wifi = wifi()?;
 
@@ -93,82 +96,118 @@ fn threads_playground() {
 }
 
 #[allow(dead_code)]
-fn gfx_hello_world() -> Result<
-        SubDrawTarget<ST7789<SPIInterfaceNoCS<spi::Master<
-            spi::SPI2,
-            gpio::Gpio18<gpio::Unknown>,
-            gpio::Gpio19<gpio::Unknown>,
-            gpio::Gpio21<gpio::Unknown>,
-            gpio::Gpio5<gpio::Unknown>>,
-            gpio::Gpio16<gpio::Output>>,
-            gpio::Gpio23<gpio::Output>>>> {
+fn ttgo_hello_world() -> Result<()>
+{
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
-
-    let mut backlight = pins.gpio4.into_output()?;
-    backlight.set_high()?;
 
     let config = <spi::config::Config as Default>::default()
         .baudrate(26.MHz().into())
         .bit_order(spi::config::BitOrder::MSBFirst);
 
-    let spi_master = spi::Master::<spi::SPI2, _, _, _, _>::new(
-        peripherals.spi2,
-        spi::Pins {
-            sclk: pins.gpio18,
-            sdo: pins.gpio19,
-            sdi: Option::<gpio::Gpio21<gpio::Unknown>>::None,
-            cs: Some(pins.gpio5),
-        },
-        config)?;
+    let mut backlight = pins.gpio4.into_output()?;
+    backlight.set_high()?;
 
     let di = SPIInterfaceNoCS::new(
-        spi_master,
-        pins.gpio16.into_output()?);
+        spi::Master::<spi::SPI2, _, _, _, _>::new(
+            peripherals.spi2,
+            spi::Pins {
+                sclk: pins.gpio18,
+                sdo: pins.gpio19,
+                sdi: Option::<gpio::Gpio21<gpio::Unknown>>::None,
+                cs: Some(pins.gpio5),
+            },
+            config,
+        )?,
+        pins.gpio16.into_output()?,
+    );
 
-    let top_left = Point::new(53, 40);
-    let size = Size::new(135, 240);
-
-    let bounds = Rectangle::new(top_left, top_left + size);
-
-    // create driver
-    let mut display = ST7789::new(
-        di,
-        pins.gpio23.into_output()?,
-        bounds.size().width as u16,
-        bounds.size().width as u16);
+    let mut display = st7789::ST7789::new(di, pins.gpio23.into_output()?, 240, 135);
 
     AnyError::<st7789::Error<_>>::wrap(|| {
-        // initialize
         display.init(&mut delay::Ets)?;
+        display.set_orientation(st7789::Orientation::Landscape)?;
 
-        display.clear(Rgb565::BLACK)?;
-
-        // set default orientation
-        display.set_orientation(Orientation::Landscape)?;
-
-        let mut display = SubDrawTarget::new(
-            display,
-            Rectangle::new(
-                Point::new(bounds.top_left.y, bounds.top_left.x),
-                Point::new(bounds.bottom_right.y, bounds.bottom_right.x)));
-
-        Rectangle::new(Point::zero(), Point::zero() + display.size() - Size::new(1, 1))
-            .into_styled(PrimitiveStyleBuilder::new()
-                .fill_color(Rgb565::BLUE)
-                .stroke_color(Rgb565::RED)
-                .stroke_width(1) // > 1 is not currently supported in embedded-graphics on triangles
-                .build())
-            .draw(&mut display)?;
-
-        Text::new("Hello Rust!", Point::new(20, (display.size().height - 16) as i32 / 2))
-            .into_styled(TextStyle::new(Font12x16, Rgb565::WHITE))
-            .draw(&mut display)?;
-
-        info!("LED rendering done");
-
-        Ok(display)
+        led_draw(&mut display.translated(Point::new(53, 40)))
     })
+}
+
+#[allow(dead_code)]
+fn kaluga_hello_world(ili9341: bool) -> Result<()>
+{
+    let peripherals = Peripherals::take().unwrap();
+    let pins = peripherals.pins;
+
+    let config = <spi::config::Config as Default>::default()
+        .baudrate((if ili9341 { 40 } else { 80 }).MHz().into())
+        .bit_order(spi::config::BitOrder::MSBFirst);
+
+    let mut backlight = pins.gpio6.into_output()?;
+    backlight.set_high()?;
+
+    let di = SPIInterfaceNoCS::new(
+        spi::Master::<spi::SPI3, _, _, _, _>::new(
+            peripherals.spi3,
+            spi::Pins {
+                sclk: pins.gpio15,
+                sdo: pins.gpio9,
+                sdi: Option::<gpio::Gpio21<gpio::Unknown>>::None,
+                cs: Some(pins.gpio11),
+            },
+            config,
+        )?,
+        pins.gpio13.into_output()?,
+    );
+
+    let reset = pins.gpio16.into_output()?;
+
+    if ili9341 {
+        AnyError::<ili9341::DisplayError>::wrap(|| {
+            let mut display = ili9341::Ili9341::new(
+                di,
+                reset,
+                &mut delay::Ets,
+                KalugaOrientation::Landscape,
+                ili9341::DisplaySize240x320)?;
+
+            led_draw(&mut display)
+        })
+    } else {
+        let mut display = st7789::ST7789::new(di, reset, 320, 240);
+
+        AnyError::<st7789::Error<_>>::wrap(|| {
+            display.init(&mut delay::Ets)?;
+            display.set_orientation(st7789::Orientation::Landscape)?;
+
+            led_draw(&mut display)
+        })
+    }
+}
+
+fn led_draw<D>(display: &mut D) -> Result<(), D::Error>
+where
+    D: DrawTarget + Dimensions,
+    D::Color: RgbColor,
+{
+    display.clear(RgbColor::BLACK)?;
+
+    Rectangle::new(display.bounding_box().top_left, display.bounding_box().size)
+        .into_styled(PrimitiveStyleBuilder::new()
+            .fill_color(RgbColor::BLUE)
+            .stroke_color(RgbColor::RED)
+            .stroke_width(1)
+            .build())
+        .draw(display)?;
+
+    Text::new(
+        "Hello Rust!",
+        Point::new(20, (display.bounding_box().size.height - 10) as i32 / 2),
+        MonoTextStyle::new(&FONT_10X20, RgbColor::WHITE))
+        .draw(display)?;
+
+    info!("LED rendering done");
+
+    Ok(())
 }
 
 fn httpd() -> Result<idf::Server> {
@@ -216,104 +255,29 @@ fn wifi() -> Result<EspWifi> {
     Ok(wifi)
 }
 
-/// Some graphics utils necessary to compensate the fact that TTYGO's real display is smaller (and offset-ed) by what the hardware reports
-
-pub struct SubDrawTarget<D> {
-    target: D,
-    bounds: Rectangle,
+// Kaluga needs customized screen orientation commands
+// (not a surprise; quite a few ILI9341 boards need these as evidences in the TFT_eSPI & lvgl ESP32 C drivers)
+pub enum KalugaOrientation {
+    Portrait,
+    PortraitFlipped,
+    Landscape,
+    LandscapeFlipped,
 }
 
-impl<D> SubDrawTarget<D> {
-    pub fn new(target: D, bounds: Rectangle) -> Self {
-        Self {
-            target,
-            bounds,
+impl ili9341::Mode for KalugaOrientation {
+    fn mode(&self) -> u8 {
+        match self {
+            Self::Portrait => 0,
+            Self::Landscape => 0x20 | 0x40,
+            Self::PortraitFlipped => 0x80 | 0x40,
+            Self::LandscapeFlipped => 0x80 | 0x20,
         }
     }
 
-    #[inline(always)]
-    fn translate_pixel<C: PixelColor>(&self, pixel: &Pixel<C>) -> Pixel<C> {
-        Pixel(pixel.0 + self.bounds.top_left, pixel.1)
-    }
-
-    #[inline(always)]
-    fn translate<T: Transform>(&self, transformable: &T) -> T {
-        transformable.translate(self.bounds.top_left)
-    }
-}
-
-impl<C: PixelColor, D: DrawTarget<C>> DrawTarget<C> for SubDrawTarget<D> {
-    type Error = D::Error;
-
-    #[inline(always)]
-    fn draw_pixel(&mut self, item: Pixel<C>) -> Result<(), Self::Error> {
-        self.target.draw_pixel(self.translate_pixel(&item))
-    }
-
-    #[inline(always)]
-    fn draw_iter<T>(&mut self, item: T) -> Result<(), Self::Error>
-    where
-        T: IntoIterator<Item = Pixel<C>>,
-    {
-        for pixel in item {
-            self.draw_pixel(pixel)?;
+    fn is_landscape(&self) -> bool {
+        match self {
+            Self::Landscape | Self::LandscapeFlipped => true,
+            Self::Portrait | Self::PortraitFlipped => false,
         }
-
-        Ok(())
-    }
-
-    #[inline(always)]
-    fn size(&self) -> Size {
-        self.bounds.size()
-    }
-
-    #[inline(always)]
-    fn clear(&mut self, color: C) -> Result<(), Self::Error>
-    where
-        Self: Sized,
-    {
-        self.target.clear(color)
-    }
-
-    #[inline(always)]
-    fn draw_line(
-        &mut self,
-        item: &Styled<Line, PrimitiveStyle<C>>,
-    ) -> Result<(), Self::Error> {
-        self.target.draw_line(&self.translate(item))
-    }
-
-    #[inline(always)]
-    fn draw_triangle(
-        &mut self,
-        item: &Styled<Triangle, PrimitiveStyle<C>>,
-    ) -> Result<(), Self::Error> {
-        self.target.draw_triangle(&self.translate(item))
-    }
-
-    #[inline(always)]
-    fn draw_rectangle(
-        &mut self,
-        item: &Styled<Rectangle, PrimitiveStyle<C>>,
-    ) -> Result<(), Self::Error> {
-        self.target.draw_rectangle(&self.translate(item))
-    }
-
-    #[inline(always)]
-    fn draw_circle(
-        &mut self,
-        item: &Styled<Circle, PrimitiveStyle<C>>,
-    ) -> Result<(), Self::Error> {
-        self.target.draw_circle(&self.translate(item))
-    }
-
-    #[inline(always)]
-    fn draw_image<'a, 'b, I>(&mut self, item: &'a Image<'b, I, C>) -> Result<(), Self::Error>
-    where
-        &'b I: IntoPixelIter<C>,
-        I: ImageDimensions,
-        C: PixelColor + From<<C as PixelColor>::Raw>,
-    {
-        self.target.draw_image(&self.translate(item))
     }
 }
