@@ -44,7 +44,7 @@ fn main() -> Result<()> {
 
     // Uncomment this if you have a TTGO ESP32 board
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
-    ttgo_hello_world()?;
+    // ttgo_hello_world()?;
 
     // ... or uncomment this if you have a Kaluga-1 ESP32-S2 board
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
