@@ -27,9 +27,10 @@ Highlights:
   - `cargo install cargo-pio --git https://github.com/ivmarkov/cargo-pio`
 - Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
 - Enter it: `cd rust-esp32-std-hello`
-- Change **lines 233 and 234** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
-- (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 47** to be greeted with a `Hello Rust!` message on the board's LED screen
-- (Only if you happen to have a [ESP32-S2-Kaluga-1 board](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit.html)): Uncomment **line 49** to be greeted with a `Hello Rust!` message on the board's LED screen
+- Change **lines 254 and 255** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
+- (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 51** to be greeted with a `Hello Rust!` message on the board's LED screen
+- (Only if you happen to have an [ESP32-S2-Kaluga-1 board](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit.html)): Uncomment **line 55** to be greeted with a `Hello Rust!` message on the board's LED screen
+- (Only if you happen to have a [Heltec LoRa 32 board](https://heltec.org/project/wifi-lora-32/)): Uncomment **line 59** to be greeted with a `Hello Rust!` message on the board's LED screen
 - Build: `cargo build` or `cargo build --release`
 
 ## Building for ESP32-S2 and ESP32-C3

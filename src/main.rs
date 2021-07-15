@@ -19,17 +19,21 @@ use esp_idf_svc::wifi::*;
 
 use esp_idf_hal::delay;
 use esp_idf_hal::gpio;
+use esp_idf_hal::i2c;
 use esp_idf_hal::prelude::*;
 use esp_idf_hal::spi;
 
 use display_interface_spi::SPIInterfaceNoCS;
 
 use embedded_graphics::mono_font::{ascii::FONT_10X20, MonoTextStyle};
+use embedded_graphics::pixelcolor::*;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
 use embedded_graphics::text::*;
 
 use ili9341;
+use ssd1306;
+use ssd1306::mode::DisplayConfig;
 use st7789;
 
 fn main() -> Result<()> {
@@ -49,6 +53,10 @@ fn main() -> Result<()> {
     // ... or uncomment this if you have a Kaluga-1 ESP32-S2 board
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
     // kaluga_hello_world(true)?;
+
+    // ... or uncomment this if you have a Heltec LoRa 32 board
+    // For other boards, you might have to use a different embedded-graphics driver and pin configuration
+    // heltec_hello_world()?;
 
     let _wifi = wifi()?;
 
@@ -99,6 +107,8 @@ fn threads_playground() {
 
 #[allow(dead_code)]
 fn ttgo_hello_world() -> Result<()> {
+    info!("About to initialize the TTGO ST7789 LED driver");
+
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
 
@@ -126,7 +136,7 @@ fn ttgo_hello_world() -> Result<()> {
     let mut display = st7789::ST7789::new(
         di,
         pins.gpio23.into_output()?,
-        // SP7789V is for as 240x320 device, even though the screen is smaller
+        // SP7789V is designed to drive 240x320 screens, even though the TTGO physical screen is smaller
         240,
         320,
     );
@@ -139,13 +149,17 @@ fn ttgo_hello_world() -> Result<()> {
         let top_left = Point::new(52, 40);
         let size = Size::new(135, 240);
 
-        //led_draw(&mut display)
         led_draw(&mut display.cropped(&Rectangle::new(top_left, size)))
     })
 }
 
 #[allow(dead_code)]
 fn kaluga_hello_world(ili9341: bool) -> Result<()> {
+    info!(
+        "About to initialize the Kaluga {} SPI LED driver",
+        if ili9341 { "ILI9341" } else { "ST7789" }
+    );
+
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
 
@@ -196,18 +210,65 @@ fn kaluga_hello_world(ili9341: bool) -> Result<()> {
     }
 }
 
+#[allow(dead_code)]
+fn heltec_hello_world() -> Result<()> {
+    info!("About to initialize the Heltec SSD1306 I2C LED driver");
+
+    let peripherals = Peripherals::take().unwrap();
+    let pins = peripherals.pins;
+
+    let config = <i2c::config::MasterConfig as Default>::default().baudrate(400.kHz().into());
+
+    let di = ssd1306::I2CDisplayInterface::new(i2c::Master::<i2c::I2C0, _, _>::new(
+        peripherals.i2c0,
+        i2c::Pins {
+            sda: pins.gpio4,
+            scl: pins.gpio15,
+        },
+        config,
+    )?);
+
+    let mut delay = delay::Ets;
+    let mut reset = pins.gpio16.into_output()?;
+
+    reset.set_high()?;
+    delay.delay_ms(1 as u32);
+
+    reset.set_low()?;
+    delay.delay_ms(10 as u32);
+
+    reset.set_high()?;
+
+    let mut display = Box::new(
+        ssd1306::Ssd1306::new(
+            di,
+            ssd1306::size::DisplaySize128x64,
+            ssd1306::rotation::DisplayRotation::Rotate0,
+        )
+        .into_buffered_graphics_mode(),
+    );
+
+    AnyError::<display_interface::DisplayError>::wrap(|| {
+        display.init()?;
+
+        led_draw(&mut *display)?;
+
+        display.flush()
+    })
+}
+
 fn led_draw<D>(display: &mut D) -> Result<(), D::Error>
 where
     D: DrawTarget + Dimensions,
-    D::Color: RgbColor,
+    D::Color: From<Rgb565>,
 {
-    display.clear(RgbColor::BLACK)?;
+    display.clear(Rgb565::BLACK.into())?;
 
     Rectangle::new(display.bounding_box().top_left, display.bounding_box().size)
         .into_styled(
             PrimitiveStyleBuilder::new()
-                .fill_color(RgbColor::BLUE)
-                .stroke_color(RgbColor::RED)
+                .fill_color(Rgb565::BLUE.into())
+                .stroke_color(Rgb565::YELLOW.into())
                 .stroke_width(1)
                 .build(),
         )
@@ -216,7 +277,7 @@ where
     Text::new(
         "Hello Rust!",
         Point::new(10, (display.bounding_box().size.height - 10) as i32 / 2),
-        MonoTextStyle::new(&FONT_10X20, RgbColor::WHITE),
+        MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE.into()),
     )
     .draw(display)?;
 
@@ -241,12 +302,12 @@ fn httpd() -> Result<idf::Server> {
         .start(&Default::default())
 }
 
-fn wifi() -> Result<impl Wifi> {
-    let mut wifi = EspWifi::new(
+fn wifi() -> Result<Box<impl Wifi>> {
+    let mut wifi = Box::new(EspWifi::new(
         Arc::new(EspNetif::new()?),
         Arc::new(EspSysLoop::new()?),
         Arc::new(EspDefaultNvs::new()?),
-    )?;
+    )?);
 
     info!("Wifi created");
 
