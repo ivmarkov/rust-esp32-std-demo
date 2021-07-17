@@ -49,6 +49,6 @@ ssd1306 = "0.7"
 #chrono = {git = "https://github.com/ivmarkov/chrono.git", branch = "main"}
 
 [build-dependencies]
-cargo-pio = {version = "0.20", git = "https://github.com/ivmarkov/cargo-pio"}
+cargo-pio = "0.20"
 #cargo-pio = {version = "*", path = "../cargo-pio"}
 anyhow = "1"
