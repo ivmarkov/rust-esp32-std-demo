@@ -24,7 +24,7 @@ Highlights:
 - Switch to nightly (as per above, necessary for Cargo): `rustup default nightly`
 - Download and install the [prebuilt binaries of the Rust ESP32 STD compiler fork and the Espressif LLVM clang fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust ESP32 STD compiler fork & Espressif LLVM clang fork build instructions](https://github.com/ivmarkov/rust);
 - The build is using the `cargo-pio-link` linker wrapper, so install [cargo-pio](https://github.com/ivmarkov/cargo-pio):
-  - `cargo install cargo-pio --git https://github.com/ivmarkov/cargo-pio`
+  - `cargo install cargo-pio`
 - Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
 - Enter it: `cd rust-esp32-std-hello`
 - Change **lines 254 and 255** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
