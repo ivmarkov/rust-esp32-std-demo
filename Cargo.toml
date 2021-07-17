@@ -26,13 +26,13 @@ libc = { git = "https://github.com/ivmarkov/libc.git", branch = "version_0.2.98"
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
-esp-idf-sys = {version = "0.15", git = "https://github.com/ivmarkov/esp-idf-sys.git"}
+esp-idf-sys = {version = "0.16", git = "https://github.com/ivmarkov/esp-idf-sys.git"}
 #esp-idf-sys = { version = "*", path = "../esp-idf-sys"}
 embedded-svc = {version = "0.7", git = "https://github.com/ivmarkov/embedded-svc.git"}
 #embedded-svc = {version = "*", path = "../embedded-svc"}
-esp-idf-svc = {version = "0.15", git = "https://github.com/ivmarkov/esp-idf-svc.git", features = ["binstart"]}
+esp-idf-svc = {version = "0.16", git = "https://github.com/ivmarkov/esp-idf-svc.git", features = ["binstart"]}
 #esp-idf-svc = {version = "*", path = "../esp-idf-svc", features = ["binstart"]}
-esp-idf-hal = {version = "0.15", git = "https://github.com/ivmarkov/esp-idf-hal.git"}
+esp-idf-hal = {version = "0.16", git = "https://github.com/ivmarkov/esp-idf-hal.git"}
 #esp-idf-hal = {version = "*", path = "../esp-idf-hal"}
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
@@ -49,6 +49,6 @@ ssd1306 = "0.7"
 #chrono = {git = "https://github.com/ivmarkov/chrono.git", branch = "main"}
 
 [build-dependencies]
-cargo-pio = {version = "0.14", git = "https://github.com/ivmarkov/cargo-pio"}
-#cargo-pio = {version = "*", path = "../../../cargo-pio"}
+cargo-pio = {version = "0.20", git = "https://github.com/ivmarkov/cargo-pio"}
+#cargo-pio = {version = "*", path = "../cargo-pio"}
 anyhow = "1"

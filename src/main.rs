@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use std::thread;
 use std::{env, sync::Arc, time::*};
 
@@ -106,6 +108,7 @@ fn threads_playground() {
 }
 
 #[allow(dead_code)]
+#[cfg(esp32)]
 fn ttgo_hello_world() -> Result<()> {
     info!("About to initialize the TTGO ST7789 LED driver");
 
@@ -154,6 +157,7 @@ fn ttgo_hello_world() -> Result<()> {
 }
 
 #[allow(dead_code)]
+#[cfg(esp32s2)]
 fn kaluga_hello_world(ili9341: bool) -> Result<()> {
     info!(
         "About to initialize the Kaluga {} SPI LED driver",
@@ -211,6 +215,7 @@ fn kaluga_hello_world(ili9341: bool) -> Result<()> {
 }
 
 #[allow(dead_code)]
+#[cfg(esp32)]
 fn heltec_hello_world() -> Result<()> {
     info!("About to initialize the Heltec SSD1306 I2C LED driver");
 
@@ -257,6 +262,7 @@ fn heltec_hello_world() -> Result<()> {
     })
 }
 
+#[allow(dead_code)]
 fn led_draw<D>(display: &mut D) -> Result<(), D::Error>
 where
     D: DrawTarget + Dimensions,
