@@ -26,14 +26,14 @@ libc = { git = "https://github.com/ivmarkov/libc.git", branch = "version_0.2.98"
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
-esp-idf-sys = {version = "0.16", git = "https://github.com/ivmarkov/esp-idf-sys.git"}
-#esp-idf-sys = { version = "*", path = "../esp-idf-sys"}
-embedded-svc = {version = "0.7", git = "https://github.com/ivmarkov/embedded-svc.git"}
-#embedded-svc = {version = "*", path = "../embedded-svc"}
-esp-idf-svc = {version = "0.16", git = "https://github.com/ivmarkov/esp-idf-svc.git", features = ["binstart"]}
-#esp-idf-svc = {version = "*", path = "../esp-idf-svc", features = ["binstart"]}
-esp-idf-hal = {version = "0.16", git = "https://github.com/ivmarkov/esp-idf-hal.git"}
-#esp-idf-hal = {version = "*", path = "../esp-idf-hal"}
+esp-idf-sys = { version = "0.16.1", git = "https://github.com/ivmarkov/esp-idf-sys.git" }
+#esp-idf-sys = { version = "*", path = "../esp-idf-sys" }
+embedded-svc = { version = "0.7", git = "https://github.com/ivmarkov/embedded-svc.git" }
+#embedded-svc = { version = "*", path = "../embedded-svc" }
+esp-idf-svc = { version = "0.16", git = "https://github.com/ivmarkov/esp-idf-svc.git", features = ["binstart"] }
+#esp-idf-svc = { version = "*", path = "../esp-idf-svc", features = ["binstart"] }
+esp-idf-hal = { version = "0.16", git = "https://github.com/ivmarkov/esp-idf-hal.git" }
+#esp-idf-hal = { version = "*", path = "../esp-idf-hal" }
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 display-interface = "0.4"
@@ -42,13 +42,13 @@ st7789 = "0.6"
 ili9341 = { version = "0.5", git = "https://github.com/ivmarkov/ili9341-rs" }
 ssd1306 = "0.7"
 
-#backtrace = {version = "0.3.56", path = "../backtrace-rs"}
-#backtrace = {version = "0.3.56", git = "https://github.com/ivmarkov/backtrace-rs.git", branch = "esp-idf"}
-#time = {git = "https://github.com/ivmarkov/time.git", branch = "master"}
-#getrandom = {git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1"}
-#chrono = {git = "https://github.com/ivmarkov/chrono.git", branch = "main"}
+#backtrace = { version = "0.3.56", path = "../backtrace-rs" }
+#backtrace = { version = "0.3.56", git = "https://github.com/ivmarkov/backtrace-rs.git", branch = "esp-idf" }
+#time = { git = "https://github.com/ivmarkov/time.git", branch = "master" }
+#getrandom = { git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1" }
+#chrono = { git = "https://github.com/ivmarkov/chrono.git", branch = "main" }
 
 [build-dependencies]
-cargo-pio = "0.20"
-#cargo-pio = {version = "*", path = "../cargo-pio"}
+cargo-pio = "0.20.1"
+#cargo-pio = { version = "*", path = "../cargo-pio" }
 anyhow = "1"

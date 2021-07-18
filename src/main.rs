@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
-use std::thread;
-use std::{env, sync::Arc, time::*};
+use std::{env, sync::Arc, sync::atomic::*, thread, time::*};
 
 use anyhow::*;
 use log::*;
@@ -42,6 +41,8 @@ fn main() -> Result<()> {
     simple_playground();
 
     threads_playground();
+
+    test_atomics();
 
     // Enough playing.
     // The real demo: start WiFi and ignite Httpd
@@ -105,6 +106,23 @@ fn threads_playground() {
     thread::sleep(Duration::new(2, 0));
 
     println!("Joins were successful.");
+}
+
+#[allow(deprecated)]
+fn test_atomics() {
+    let a = AtomicUsize::new(0);
+    let v1 = a.compare_and_swap(0, 1, Ordering::SeqCst);
+    let v2 = a.swap(2, Ordering::SeqCst);
+
+    let (r1, r2) = unsafe {
+        // don't optimize our atomics out
+        let r1 = core::ptr::read_volatile(&v1);
+        let r2 = core::ptr::read_volatile(&v2);
+
+        (r1, r2)
+    };
+
+    println!("Result: {}, {}", r1, r2);
 }
 
 #[allow(dead_code)]
