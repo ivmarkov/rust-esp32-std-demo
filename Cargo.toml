@@ -3,6 +3,12 @@ name = "rust-esp32-std-hello"
 version = "0.14.0"
 authors = ["ivmarkov"]
 edition = "2018"
+categories = ["embedded", "hardware-support"]
+keywords = ["embedded", "svc", "idf", "esp-idf", "esp32"]
+description = "A demo binary crate for the ESP32 and ESP-IDF, which connects to WiFi, drives a small HTTP server and draws on a LED screen"
+repository = "https://github.com/ivmarkov/rust-esp32-std-hello"
+license = "MIT"
+readme = "README.md"
 
 # No xtensa in regular compiler yet
 [package.metadata.docs.rs]
@@ -26,14 +32,14 @@ libc = { git = "https://github.com/ivmarkov/libc.git", branch = "version_0.2.98"
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
-esp-idf-sys = { version = "0.16.1", git = "https://github.com/ivmarkov/esp-idf-sys.git" }
-#esp-idf-sys = { version = "*", path = "../esp-idf-sys" }
-embedded-svc = { version = "0.7", git = "https://github.com/ivmarkov/embedded-svc.git" }
-#embedded-svc = { version = "*", path = "../embedded-svc" }
-esp-idf-svc = { version = "0.16", git = "https://github.com/ivmarkov/esp-idf-svc.git", features = ["binstart"] }
-#esp-idf-svc = { version = "*", path = "../esp-idf-svc", features = ["binstart"] }
-esp-idf-hal = { version = "0.16", git = "https://github.com/ivmarkov/esp-idf-hal.git" }
-#esp-idf-hal = { version = "*", path = "../esp-idf-hal" }
+esp-idf-sys = "0.16.1"
+#esp-idf-sys = { path = "../esp-idf-sys" }
+embedded-svc = "0.7"
+#embedded-svc = { path = "../embedded-svc" }
+esp-idf-svc = { version = "0.16", features = ["binstart"] }
+#esp-idf-svc = { path = "../esp-idf-svc", features = ["binstart"] }
+esp-idf-hal = "0.16"
+#esp-idf-hal = { path = "../esp-idf-hal" }
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 display-interface = "0.4"

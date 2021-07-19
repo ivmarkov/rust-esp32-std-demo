@@ -1,10 +1,10 @@
 [build]
 # Uncomment the relevant target for your chip here (ESP32, ESP32-S2 or ESP32-C3)
 # ESP32-C3 has two targets, because the second one excercises the atomics instructions implementation outlined here:
-#target = "xtensa-esp32-none-elf"
+target = "xtensa-esp32-none-elf"
 #target = "xtensa-esp32s2-none-elf"
 #target = "riscv32imc-esp32c3-none-elf"
-target = "riscv32imac-esp32c3-none-elf" # This is very experimental
+#target = "riscv32imac-esp32c3-none-elf" # This is very experimental
 
 [target.xtensa-esp32-none-elf]
 linker = "cargo-pio-link"
