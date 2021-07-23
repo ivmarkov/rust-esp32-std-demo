@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.14.1"
+version = "0.14.2"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -49,5 +49,5 @@ ssd1306 = "0.7"
 #getrandom = { git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1" }
 
 [build-dependencies]
-cargo-pio = "0.20.1"
+cargo-pio = "0.20.2"
 anyhow = "1"

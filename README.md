@@ -7,13 +7,13 @@ A demo binary crate for the ESP32 and ESP-IDF, which connects to WiFi, drives a 
 Highlights:
 
 - **Pure Rust and pure Cargo build!** No CMake, no PlatformIO, no C helpers
-  - ... via [esp-idf-sys](https://github.com/ivmarkov/esp-idf-sys) and [cargo-pio](https://github.com/ivmarkov/cargo-pio)
+  - ... via [esp-idf-sys](https://crates.io/crates/esp-idf-sys) and [cargo-pio](https://crates.io/crates/cargo-pio)
 - **Support for Rust STD** (threads, console, TCP/IP) safe APIs
-  - ... implemented directly in the [Rust ESP32 STD compiler fork](https://github.com/ivmarkov/rus)
+  - ... implemented directly in the [Rust Espressif compiler fork](https://github.com/esp-rs/rust)
 - Rust Safe APIs for various ESP-IDF services like WiFi, Ping, Httpd and logging
-  - ... via [esp-idf-svc](https://github.com/ivmarkov/esp-idf-svc) ([embedded-svc](https://github.com/ivmarkov/embedded-svc) abstractions implemented on top of ESP-IDF)
-- Driving a LED screen with the [embedded-graphics](https://github.com/embedded-graphics/embedded-graphics) Rust crate
-  - via [esp-idf-hal](https://github.com/ivmarkov/esp-idf-hal) ([embedded-hal](https://github.com/rust-embedded/embedded-hal) drivers implemented on top of ESP-IDF)
+  - ... via [esp-idf-svc](https://crates.io/crates/esp-idf-svc) ([embedded-svc](https://crates.io/crates/embedded-svc) abstractions implemented on top of ESP-IDF)
+- Driving a LED screen with the [embedded-graphics](https://crates.io/crates/embedded-graphics) Rust crate
+  - via [esp-idf-hal](https://crates.io/crates/esp-idf-hal) ([embedded-hal](https://crates.io/crates/embedded-hal) drivers implemented on top of ESP-IDF)
 
 ## Build
 
@@ -22,12 +22,12 @@ Highlights:
 - Install the nightly toolchain of Rust (necessary, because we utilize a few unstable Cargo features): `rustup toolchain install nightly`
 - Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: `rustup update`
 - Switch to nightly (as per above, necessary for Cargo): `rustup default nightly`
-- Download and install the [prebuilt binaries of the Rust ESP32 STD compiler fork and the Espressif LLVM clang fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust ESP32 STD compiler fork & Espressif LLVM clang fork build instructions](https://github.com/ivmarkov/rust);
-- The build is using the `cargo-pio-link` linker wrapper, so install [cargo-pio](https://github.com/ivmarkov/cargo-pio):
+- Download and install the [prebuilt binaries of the Rust Espressif compiler fork and the Espressif LLVM clang fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust Espressif compiler fork & Espressif LLVM clang fork build instructions](https://github.com/esp-rs/rust);
+- The build is using the `cargo-pio-link` linker wrapper, so install [cargo-pio](https://crates.io/crates/cargo-pio):
   - `cargo install cargo-pio`
 - Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
 - Enter it: `cd rust-esp32-std-hello`
-- Change **lines 254 and 255** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
+- Change **lines 339 and 340** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
 - (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 51** to be greeted with a `Hello Rust!` message on the board's LED screen
 - (Only if you happen to have an [ESP32-S2-Kaluga-1 board](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit.html)): Uncomment **line 55** to be greeted with a `Hello Rust!` message on the board's LED screen
 - (Only if you happen to have a [Heltec LoRa 32 board](https://heltec.org/project/wifi-lora-32/)): Uncomment **line 59** to be greeted with a `Hello Rust!` message on the board's LED screen
@@ -35,10 +35,8 @@ Highlights:
 
 ## Building for ESP32-S2 and ESP32-C3
 
-* Instead of installing the [prebuilt binaries of the Rust ESP32 STD compiler fork and the Espressif LLVM clang fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md), you need to build the upcoming [`stable_V1.53`](https://github.com/ivmarkov/rust/tree/stable_V1.53.0) branch of the Rust STD compiler fork:
-  * Follow the instructions in the README.md file in that branch. They are actually the same as the `stable` branch build instructions, the only difference is which branch you checkout for building
-  * This branch is to replace the current Rust STD `stable` branch once all issues are completely ironed out
-* To configure the demo for your particular board, please uncomment either the [Rust ESP32-S2 target](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L4), or the [Rust ESP32-C3 target](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L5) and comment the others
+* Instead of installing the [prebuilt binaries of the Rust Espressif compiler fork and the Espressif LLVM clang fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) which are sligthly behind, you need to build the compiler fork from source, as described above.
+* To configure the demo for your particular board, please uncomment either the [Rust ESP32-S2 target](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L6), or the [Rust ESP32-C3 target](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L8) and comment the others
 * Other than these two changes, please follow the build instructions from above
 
 ## Flash
@@ -48,7 +46,7 @@ Highlights:
 - Replace `dev/tttyUSB0` above with the USB port where you've connected the board
 - If espflash complains with `Error: IO error while using serial port: Operation timed out` or with error `Error: Failed to connect to the device`, just retry the flash operation
 
-**NOTE**: The above commands do use [`espflash`](https://github.com/esp-rs/espflash/tree/master/espflash) and NOT [`cargo espflash`](https://github.com/esp-rs/espflash/tree/master/cargo-espflash), even though both can be installed via Cargo. `cargo espflash` is essentially `espflash` but it also builds the project prior to attempting to flash the resulting ELF binary. Currently, `cargo espflash` does not work for this project due to this [issue](https://github.com/esp-rs/espflash/issues/19).
+**NOTE**: The above commands do use [`espflash`](https://crates.io/crates/espflash) and NOT [`cargo espflash`](https://crates.io/crates/cargo-espflash), even though both can be installed via Cargo. `cargo espflash` is essentially `espflash` but it also builds the project prior to attempting to flash the resulting ELF binary. Currently, `cargo espflash` does not work for this project due to this [issue](https://github.com/esp-rs/espflash/issues/19).
 
 **NOTE**: `espflash` currently supports only ESP32. For ESP32-S2 and ESP32-C3 you have to use the alternative flashing method below, passing as argument `--chip esp32s2` or `--chip esp32c3` respectively.
 
