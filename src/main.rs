@@ -1,9 +1,12 @@
 #![allow(unused_imports)]
 
+use std::sync::{Condvar, Mutex};
 use std::{env, sync::Arc, sync::atomic::*, thread, time::*};
 
 use anyhow::*;
 use log::*;
+
+use url;
 
 use embedded_svc::anyerror::*;
 use embedded_svc::httpd::registry::*;
@@ -12,6 +15,7 @@ use embedded_svc::ping::Ping;
 use embedded_svc::wifi::*;
 
 use esp_idf_svc::httpd as idf;
+use esp_idf_svc::httpd::ServerRegistry;
 use esp_idf_svc::netif::*;
 use esp_idf_svc::nvs::*;
 use esp_idf_svc::ping;
@@ -23,6 +27,10 @@ use esp_idf_hal::gpio;
 use esp_idf_hal::i2c;
 use esp_idf_hal::prelude::*;
 use esp_idf_hal::spi;
+use esp_idf_hal::ulp;
+
+use esp_idf_sys;
+use esp_idf_sys::esp;
 
 use display_interface_spi::SPIInterfaceNoCS;
 
@@ -36,6 +44,12 @@ use ili9341;
 use ssd1306;
 use ssd1306::mode::DisplayConfig;
 use st7789;
+
+#[cfg(esp32s2)]
+include!(env!("CARGO_PIO_SYMGEN_RUNNER_SYMBOLS_FILE"));
+
+#[cfg(esp32s2)]
+const ULP: &[u8] = include_bytes!(env!("CARGO_PIO_BINGEN_RUNNER_BIN_FILE"));
 
 fn main() -> Result<()> {
     simple_playground();
@@ -61,13 +75,38 @@ fn main() -> Result<()> {
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
     // heltec_hello_world()?;
 
-    let _wifi = wifi()?;
+    let wifi = wifi()?;
 
-    let _httpd = httpd()?;
+    let mutex = Arc::new((Mutex::new(None), Condvar::new()));
 
-    loop {
-        std::thread::sleep(std::time::Duration::from_secs(5));
+    let httpd = httpd(mutex.clone())?;
+
+    let mut wait = mutex.0.lock().unwrap();
+
+    #[allow(unused)]
+    let cycles = loop {
+        if let Some(cycles) = *wait {
+            break cycles;
+        } else {
+            wait = mutex.1.wait(wait).unwrap();
+        }
+    };
+
+    for s in 0..3 {
+        info!("Shutting down in {} secs", 3 - s);
+        thread::sleep(Duration::from_secs(1));
     }
+
+    drop(httpd);
+    info!("Httpd stopped");
+
+    drop(wifi);
+    info!("Wifi stopped");
+
+    #[cfg(esp32s2)]
+    start_ulp(cycles)?;
+
+    Ok(())
 }
 
 fn simple_playground() {
@@ -310,8 +349,9 @@ where
     Ok(())
 }
 
-fn httpd() -> Result<idf::Server> {
-    idf::ServerRegistry::new()
+#[allow(unused_variables)]
+fn httpd(mutex: Arc<(Mutex<Option<u32>>, Condvar)>) -> Result<idf::Server> {
+    let server = idf::ServerRegistry::new()
         .at("/")
         .get(|_| Ok("Hello, world!".into()))?
         .at("/foo")
@@ -322,8 +362,90 @@ fn httpd() -> Result<idf::Server> {
                 .status_message("No permissions")
                 .body("You have no permissions to access this page".into())
                 .into()
+        })?;
+
+    #[cfg(esp32s2)]
+    let server = httpd_ulp_endpoints(server, mutex)?;
+
+    server.start(&Default::default())
+}
+
+#[cfg(esp32s2)]
+fn httpd_ulp_endpoints(server: ServerRegistry, mutex: Arc<(Mutex<Option<u32>>, Condvar)>) -> Result<ServerRegistry> {
+    server
+        .at("/ulp")
+        .get(|_| {
+            Ok(r#"
+            <doctype html5>
+            <html>
+                <body>
+                    <form method = "post" action = "/ulp_start" enctype="application/x-www-form-urlencoded">
+                        Blink LED with ULP <input name = "cycles" type = "text" value = "10"> times
+                        <input type = "submit" value = "Go!">
+                    </form>
+                </body>
+            </html>
+            "#.into())
         })?
-        .start(&Default::default())
+        .at("/ulp_start")
+        .post(move |mut request| {
+            let body = request.as_bytes()?;
+
+            let cycles = url::form_urlencoded::parse(&body)
+                .filter(|p| p.0 == "cycles")
+                .map(|p| str::parse::<u32>(&p.1).map_err(Error::msg))
+                .next()
+                .ok_or(anyhow!("No parameter cycles"))??;
+
+            let mut wait = mutex.0.lock().unwrap();
+
+            *wait = Some(cycles);
+            mutex.1.notify_one();
+
+            Ok(format!(
+                r#"
+                <doctype html5>
+                <html>
+                    <body>
+                        About to sleep now. The ULP chip should blink the LED {} times and then wake me up. Bye!
+                    </body>
+                </html>
+                "#,
+                cycles).to_owned().into())
+        })
+}
+
+#[cfg(esp32s2)]
+fn start_ulp(cycles: u32) -> Result<()> {
+    use esp_idf_hal::ulp;
+
+    unsafe {
+        esp!(esp_idf_sys::ulp_riscv_load_binary(ULP.as_ptr(), ULP.len() as _))?;
+        info!("RiscV ULP binary loaded successfully");
+
+        // Once started, the ULP will wakeup every 5 minutes
+        // TODO: Figure out how to disable ULP timer-based wakeup completely, with an ESP-IDF call
+        ulp::enable_timer(false);
+
+        info!("RiscV ULP Timer configured");
+
+        info!("Default ULP LED blink cycles: {}", core::ptr::read_volatile(CYCLES as *mut u32));
+
+        core::ptr::write_volatile(CYCLES as *mut u32, cycles);
+        info!("Sent {} LED blink cycles to the ULP", core::ptr::read_volatile(CYCLES as *mut u32));
+
+        esp!(esp_idf_sys::ulp_riscv_run())?;
+        info!("RiscV ULP started");
+
+        esp!(esp_idf_sys::esp_sleep_enable_ulp_wakeup())?;
+        info!("Wakeup from ULP enabled");
+
+        // Wake up by a timer in 60 seconds
+        info!("About to get to sleep now. Will wake up automatically either in 1 minute, or once the ULP has done blinking the LED");
+        esp_idf_sys::esp_deep_sleep(Duration::from_secs(60).as_micros() as u64);
+    }
+
+    Ok(())
 }
 
 fn wifi() -> Result<Box<impl Wifi>> {

@@ -32,10 +32,11 @@ libc = { git = "https://github.com/ivmarkov/libc.git", branch = "version_0.2.98"
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
-esp-idf-sys = "0.16.1"
+url = "2"
+esp-idf-sys = "0.16.3"
 embedded-svc = "0.7"
 esp-idf-svc = { version = "0.16", features = ["binstart"] }
-esp-idf-hal = "0.16"
+esp-idf-hal = "0.17"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 display-interface = "0.4"
@@ -49,5 +50,8 @@ ssd1306 = "0.7"
 #getrandom = { git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1" }
 
 [build-dependencies]
-cargo-pio = "0.20.2"
+cargo-pio = "0.20.3"
 anyhow = "1"
+
+# Future; might be possible once https://github.com/rust-lang/cargo/issues/9096 hits Cargo nightly:
+# rust-esp32-ulp-hello = { path = "../rust-esp32-ulp-hello", artifact = "bin" }
