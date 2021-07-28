@@ -380,7 +380,8 @@ fn httpd_ulp_endpoints(server: ServerRegistry, mutex: Arc<(Mutex<Option<u32>>, C
             <html>
                 <body>
                     <form method = "post" action = "/ulp_start" enctype="application/x-www-form-urlencoded">
-                        Blink LED with ULP <input name = "cycles" type = "text" value = "10"> times
+                        Connect a LED to ESP32-S2 GPIO <b>Pin 04</b> and GND.<br>
+                        Blink it with ULP <input name = "cycles" type = "text" value = "10"> times
                         <input type = "submit" value = "Go!">
                     </form>
                 </body>

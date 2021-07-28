@@ -14,7 +14,7 @@ Highlights:
   - ... via [esp-idf-svc](https://crates.io/crates/esp-idf-svc) ([embedded-svc](https://crates.io/crates/embedded-svc) abstractions implemented on top of ESP-IDF)
 - Driving a LED screen with the [embedded-graphics](https://crates.io/crates/embedded-graphics) Rust crate
   - via [esp-idf-hal](https://crates.io/crates/esp-idf-hal) ([embedded-hal](https://crates.io/crates/embedded-hal) drivers implemented on top of ESP-IDF)
-
+- (ESP32-S2 only) Blink a LED by loading a pure Rust program onto the RiscV Ultra Low Power CPU
 ## Build
 
 **NOTE**: For build instructions for ESP32-S2 and ESP32-C3 please see the next section.
@@ -31,6 +31,7 @@ Highlights:
 - (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 51** to be greeted with a `Hello Rust!` message on the board's LED screen
 - (Only if you happen to have an [ESP32-S2-Kaluga-1 board](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit.html)): Uncomment **line 55** to be greeted with a `Hello Rust!` message on the board's LED screen
 - (Only if you happen to have a [Heltec LoRa 32 board](https://heltec.org/project/wifi-lora-32/)): Uncomment **line 59** to be greeted with a `Hello Rust!` message on the board's LED screen
+- (Only if you happen to have an ESP32-S2 board and can connect a LED to GPIO Pin 04 and GND): Execute `cp sdkconfig.default.esp32s2-ulp-example sdkconfig.default` to enable the ESP32-S2 ULP RiscV LED demo
 - Build: `cargo build` or `cargo build --release`
 
 ## Building for ESP32-S2 and ESP32-C3
@@ -48,8 +49,6 @@ Highlights:
 
 **NOTE**: The above commands do use [`espflash`](https://crates.io/crates/espflash) and NOT [`cargo espflash`](https://crates.io/crates/cargo-espflash), even though both can be installed via Cargo. `cargo espflash` is essentially `espflash` but it also builds the project prior to attempting to flash the resulting ELF binary. Currently, `cargo espflash` does not work for this project due to this [issue](https://github.com/esp-rs/espflash/issues/19).
 
-**NOTE**: `espflash` currently supports only ESP32. For ESP32-S2 and ESP32-C3 you have to use the alternative flashing method below, passing as argument `--chip esp32s2` or `--chip esp32c3` respectively.
-
 ## Faster flashing
 
 - You can also flash with the [esptool.py](https://github.com/espressif/esptool) utility which is part of the Espressif toolset
@@ -58,6 +57,40 @@ Highlights:
 - Install esptool: `pip install esptool`
 - (After each cargo build) Convert the elf image to binary: `esptool.py --chip esp32 elf2image target/xtensa-esp32-espidf/debug/rust-esp32-std-hello`
 - (After each cargo build) Flash the resulting binary: `esptool.py --chip esp32 -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x10000 target/xtensa-esp32-espidf/debug/rust-esp32-std-hello.bin`
+
+## Flashing for ESP32-S2 & ESP32-C3
+
+`espflash` currently supports only ESP32. For ESP32-S2 and ESP32-C3 you have to use the alternative flashing method from above, passing as argument `--chip esp32s2` or `--chip esp32c3` respectively
+
+**NOTE / ESP32-C3**: Be EXTRA careful when picking the flash address when flashing on ESP32-C3:
+* These boards seem to have non-standard partition tables in that the factory image does NOT necessarily start at address 0x10000 (if there is a factory image configured at all)!
+* The partition table is usually printed during chip boot time
+
+Here are two sample partition tables:
+
+**ESP32-C3-DevKitM-1**
+```
+## Label            Usage          Type ST Offset   Length
+ 0 sec_cert         unknown          3f 00 0000d000 00003000
+ 1 nvs              WiFi data        01 02 00010000 00006000
+ 2 otadata          OTA data         01 00 00016000 00002000
+ 3 phy_init         RF data          01 01 00018000 00001000
+ 4 ota_0            OTA app          00 10 00020000 00190000 <- Flashing, Option 1: 0x20000, 1.6MB size
+ 5 ota_1            OTA app          00 11 001b0000 00190000 <- Flashing, Option 2: 0x1b0000, 1.6MB size
+ 6 fctry            WiFi data        01 02 00340000 00006000
+ 7 coredump         Unknown data     01 03 00350000 00010000
+```
+
+**NodeMCU ESP32-C3M-Kit**
+```
+## Label            Usage          Type ST Offset   Length
+ 0 phy_init         RF data          01 01 0000f000 00001000
+ 1 otadata          OTA data         01 00 00010000 00002000
+ 2 nvs              WiFi data        01 02 00012000 0000e000
+ 3 at_customize     unknown          40 00 00020000 000e0000
+ 4 ota_0            OTA app          00 10 00100000 00180000 <- Flashing, Option 1: 0x100000, 1.57MB size
+ 5 ota_1            OTA app          00 11 00280000 00180000 <- Flashing, Option 2: 0x280000, 1.57MB size
+```
 
 ## Monitor
 
@@ -177,3 +210,4 @@ I (13571) esp_idf_svc::httpd: Registered Httpd IDF server handler Get for URI "/
 - `http://<printed-ip-address>`
 - `http://<printed-ip-address>/foo?key=value`
 - `http://<printed-ip-address>/bar`
+- `http://<printed-ip-address>/ulp` (ESP32-S2 only)
