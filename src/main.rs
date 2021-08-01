@@ -3,7 +3,7 @@
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::sync::{Condvar, Mutex};
-use std::{env, sync::Arc, sync::atomic::*, thread, time::*};
+use std::{env, sync::atomic::*, sync::Arc, thread, time::*};
 
 use anyhow::*;
 use log::*;
@@ -393,7 +393,10 @@ fn httpd(mutex: Arc<(Mutex<Option<u32>>, Condvar)>) -> Result<idf::Server> {
 }
 
 #[cfg(esp32s2)]
-fn httpd_ulp_endpoints(server: ServerRegistry, mutex: Arc<(Mutex<Option<u32>>, Condvar)>) -> Result<ServerRegistry> {
+fn httpd_ulp_endpoints(
+    server: ServerRegistry,
+    mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
+) -> Result<ServerRegistry> {
     server
         .at("/ulp")
         .get(|_| {
@@ -443,7 +446,10 @@ fn start_ulp(cycles: u32) -> Result<()> {
     use esp_idf_hal::ulp;
 
     unsafe {
-        esp!(esp_idf_sys::ulp_riscv_load_binary(ULP.as_ptr(), ULP.len() as _))?;
+        esp!(esp_idf_sys::ulp_riscv_load_binary(
+            ULP.as_ptr(),
+            ULP.len() as _
+        ))?;
         info!("RiscV ULP binary loaded successfully");
 
         // Once started, the ULP will wakeup every 5 minutes
@@ -452,10 +458,16 @@ fn start_ulp(cycles: u32) -> Result<()> {
 
         info!("RiscV ULP Timer configured");
 
-        info!("Default ULP LED blink cycles: {}", core::ptr::read_volatile(CYCLES as *mut u32));
+        info!(
+            "Default ULP LED blink cycles: {}",
+            core::ptr::read_volatile(CYCLES as *mut u32)
+        );
 
         core::ptr::write_volatile(CYCLES as *mut u32, cycles);
-        info!("Sent {} LED blink cycles to the ULP", core::ptr::read_volatile(CYCLES as *mut u32));
+        info!(
+            "Sent {} LED blink cycles to the ULP",
+            core::ptr::read_volatile(CYCLES as *mut u32)
+        );
 
         esp!(esp_idf_sys::ulp_riscv_run())?;
         info!("RiscV ULP started");
