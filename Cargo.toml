@@ -28,6 +28,7 @@ opt-level = "s"
 #   to support the riscv32 architecture with newlib. A similar patch for the xtensa architecture
 #   (ESP32, ESP32S2, ESP32S3) is already in libc since libc 0.2.76
 libc = { git = "https://github.com/ivmarkov/libc.git", branch = "version_0.2.98" }
+#libc = { git = "https://github.com/ivmarkov/libc.git" } # This is for the upcoming 1.54 compiler
 
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
