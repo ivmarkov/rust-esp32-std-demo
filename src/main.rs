@@ -1,5 +1,7 @@
 #![allow(unused_imports)]
 
+use std::io::{Read, Write};
+use std::net::TcpStream;
 use std::sync::{Condvar, Mutex};
 use std::{env, sync::Arc, sync::atomic::*, thread, time::*};
 
@@ -52,11 +54,11 @@ include!(env!("CARGO_PIO_SYMGEN_RUNNER_SYMBOLS_FILE"));
 const ULP: &[u8] = include_bytes!(env!("CARGO_PIO_BINGEN_RUNNER_BIN_FILE"));
 
 fn main() -> Result<()> {
-    simple_playground();
-
-    threads_playground();
+    test_print();
 
     test_atomics();
+
+    test_threads();
 
     // Enough playing.
     // The real demo: start WiFi and ignite Httpd
@@ -76,6 +78,8 @@ fn main() -> Result<()> {
     // heltec_hello_world()?;
 
     let wifi = wifi()?;
+
+    test_tcp()?;
 
     let mutex = Arc::new((Mutex::new(None), Condvar::new()));
 
@@ -109,7 +113,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn simple_playground() {
+fn test_print() {
     // Start simple
     println!("Hello, world from Rust!");
 
@@ -121,7 +125,7 @@ fn simple_playground() {
     println!("More complex print {:?}", children);
 }
 
-fn threads_playground() {
+fn test_threads() {
     let mut children = vec![];
 
     println!("Rust main thread: {:?}", thread::current());
@@ -142,9 +146,27 @@ fn threads_playground() {
         let _ = child.join();
     }
 
-    thread::sleep(Duration::new(2, 0));
+    thread::sleep(Duration::from_secs(2));
 
     println!("Joins were successful.");
+}
+
+fn test_tcp() -> Result<()> {
+    info!("About to open a TCP connection to 1.1.1.1 port 80");
+
+    let mut stream = TcpStream::connect("one.one.one.one:80")?;
+
+    stream.write("GET / HTTP/1.0\n\n".as_bytes())?;
+
+    let mut result = Vec::new();
+
+    stream.read_to_end(&mut result)?;
+
+    info!(
+        "1.1.1.1 returned:\n=================\n{}\n=================\nSince it returned something, all is OK",
+        std::str::from_utf8(&result)?);
+
+    Ok(())
 }
 
 #[allow(deprecated)]
