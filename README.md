@@ -14,7 +14,7 @@ Highlights:
   - ... via [esp-idf-svc](https://crates.io/crates/esp-idf-svc) ([embedded-svc](https://crates.io/crates/embedded-svc) abstractions implemented on top of ESP-IDF)
 - Driving a LED screen with the [embedded-graphics](https://crates.io/crates/embedded-graphics) Rust crate
   - via [esp-idf-hal](https://crates.io/crates/esp-idf-hal) ([embedded-hal](https://crates.io/crates/embedded-hal) drivers implemented on top of ESP-IDF)
-- (ESP32-S2 only) Blink a LED by loading a pure Rust program onto the RiscV Ultra Low Power CPU
+- (ESP32-S2 only) [Blink a LED](https://github.com/ivmarkov/rust-esp32-ulp-hello) by loading a pure Rust program onto the RiscV Ultra Low Power CPU
 ## Build
 
 **NOTE**: For build instructions for ESP32-S2 and ESP32-C3 please see the next section.
