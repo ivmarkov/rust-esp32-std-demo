@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.14.2"
+version = "0.14.3"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -29,6 +29,8 @@ opt-level = "s"
 #   (ESP32, ESP32S2, ESP32S3) is already in libc since libc 0.2.76
 libc = { git = "https://github.com/ivmarkov/libc.git", branch = "version_0.2.98" }
 #libc = { git = "https://github.com/ivmarkov/libc.git" } # This is for the upcoming 1.54 compiler
+esp-idf-svc = { path = "../esp-idf-svc" }
+esp-idf-sys = { path = "../esp-idf-sys" }
 
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}

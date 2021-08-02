@@ -47,6 +47,9 @@ use ssd1306;
 use ssd1306::mode::DisplayConfig;
 use st7789;
 
+const SSID: &str = "ssid";
+const PASS: &str = "pass";
+
 #[cfg(esp32s2)]
 include!(env!("CARGO_PIO_SYMGEN_RUNNER_SYMBOLS_FILE"));
 
@@ -493,8 +496,8 @@ fn wifi() -> Result<Box<impl Wifi>> {
     info!("Wifi created");
 
     wifi.set_configuration(&Configuration::Client(ClientConfiguration {
-        ssid: "ssid".into(),
-        password: "pass".into(),
+        ssid: SSID.into(),
+        password: PASS.into(),
         ..Default::default()
     }))?;
 

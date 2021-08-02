@@ -27,7 +27,7 @@ Highlights:
   - `cargo install cargo-pio`
 - Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
 - Enter it: `cd rust-esp32-std-hello`
-- Change **lines 339 and 340** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
+- Change **lines 50 and 51** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
 - (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 51** to be greeted with a `Hello Rust!` message on the board's LED screen
 - (Only if you happen to have an [ESP32-S2-Kaluga-1 board](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit.html)): Uncomment **line 55** to be greeted with a `Hello Rust!` message on the board's LED screen
 - (Only if you happen to have a [Heltec LoRa 32 board](https://heltec.org/project/wifi-lora-32/)): Uncomment **line 59** to be greeted with a `Hello Rust!` message on the board's LED screen
@@ -94,11 +94,13 @@ Here are two sample partition tables:
 
 ## Monitor
 
-- Once flashed, the board can be connected with any suitable serial monitor, e.g. [espmonitor](https://github.com/kelnos/espmonitor) or `miniterm`, on its UART0 port
+- Once flashed, the board can be connected with any suitable serial monitor, e.g.:
+  - Cargo pio itself: `cargo pio exec -- device monitor -p /dev/ttyUSB0 -b 115200 --raw`
+  - Built-in Linux/MacOS screen: `screen /dev/ttyUSB0 115200` (use `Ctrl+A` and then type `:quit` to stop it)
   - Miniterm: `miniterm --raw /dev/ttyUSB0 115200`
-  - ESPMonitor: `cargo espmonitor --speed 115200 /dev/ttyUSB0`
-- You should see more or less the following:
+  - ESPMonitor: `cargo espmonitor --speed 115200 /dev/ttyUSB0` (you need to `cargo install espmonitor` first)
 
+- You should see more or less the following:
 ```
 Hello, world from Rust!
 More complex print [foo, bar]
