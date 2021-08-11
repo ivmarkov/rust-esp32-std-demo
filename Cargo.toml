@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.14.3"
+version = "0.15.0"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -34,9 +34,9 @@ libc = { git = "https://github.com/ivmarkov/libc.git" }
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
 url = "2"
-esp-idf-sys = "0.16.3"
-embedded-svc = "0.7"
-esp-idf-svc = { version = "0.16", features = ["binstart"] }
+esp-idf-sys = "0.17"
+embedded-svc = "0.8"
+esp-idf-svc = { version = "0.17", features = ["binstart"] }
 esp-idf-hal = "0.17"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"

@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 
+use std::ffi::CStr;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::sync::{Condvar, Mutex};
@@ -84,6 +85,8 @@ fn main() -> Result<()> {
 
     test_tcp()?;
 
+    test_napt(&wifi)?;
+
     let mutex = Arc::new((Mutex::new(None), Condvar::new()));
 
     let httpd = httpd(mutex.clone())?;
@@ -158,6 +161,14 @@ fn test_tcp() -> Result<()> {
     info!("About to open a TCP connection to 1.1.1.1 port 80");
 
     let mut stream = TcpStream::connect("one.one.one.one:80")?;
+
+    let err = stream.try_clone();
+    if let Err(err) = err {
+        info!(
+            "Duplication of file descriptors does not work (yet) on the ESP-IDF, as expected: {}",
+            err
+        );
+    }
 
     stream.write("GET / HTTP/1.0\n\n".as_bytes())?;
 
@@ -486,20 +497,46 @@ fn start_ulp(cycles: u32) -> Result<()> {
     Ok(())
 }
 
-fn wifi() -> Result<Box<impl Wifi>> {
+fn wifi() -> Result<Box<EspWifi>> {
     let mut wifi = Box::new(EspWifi::new(
-        Arc::new(EspNetif::new()?),
-        Arc::new(EspSysLoop::new()?),
+        Arc::new(EspNetifStack::new()?),
+        Arc::new(EspSysLoopStack::new()?),
         Arc::new(EspDefaultNvs::new()?),
     )?);
 
-    info!("Wifi created");
+    info!("Wifi created, about to scan");
 
-    wifi.set_configuration(&Configuration::Client(ClientConfiguration {
-        ssid: SSID.into(),
-        password: PASS.into(),
-        ..Default::default()
-    }))?;
+    let ap_infos = wifi.scan()?;
+
+    let ours = ap_infos.into_iter().find(|a| a.ssid == SSID);
+
+    let channel = if let Some(ours) = ours {
+        info!(
+            "Found configured access point {} on channel {}",
+            SSID, ours.channel
+        );
+        Some(ours.channel)
+    } else {
+        info!(
+            "Configured access point {} not found during scanning, will go with unknown channel",
+            SSID
+        );
+        None
+    };
+
+    wifi.set_configuration(&Configuration::Mixed(
+        ClientConfiguration {
+            ssid: SSID.into(),
+            password: PASS.into(),
+            channel,
+            ..Default::default()
+        },
+        AccessPointConfiguration {
+            ssid: "aptest".into(),
+            channel: channel.unwrap_or(1),
+            ..Default::default()
+        },
+    ))?;
 
     info!("Wifi configuration set, about to get status");
 
@@ -507,7 +544,7 @@ fn wifi() -> Result<Box<impl Wifi>> {
 
     if let Status(
         ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(ip_settings))),
-        _,
+        ApStatus::Started(ApIpStatus::Done),
     ) = status
     {
         info!("Wifi connected, about to do some pings");
@@ -523,10 +560,43 @@ fn wifi() -> Result<Box<impl Wifi>> {
 
         info!("Pinging done");
     } else {
-        bail!("Unexpected Wifi status: {:?}", &status);
+        bail!("Unexpected Wifi status: {:?}", status);
     }
 
     Ok(wifi)
+}
+
+// Not working yet, TBC why; do we need to set an explicit route from the STA to the SoftAP netif?
+fn test_napt(wifi: &EspWifi) -> Result<()> {
+    let router_interface = wifi.with_router_netif(|netif| netif.unwrap().get_index());
+
+    // Uncomment this line if you have enabled NAPT in the ESP-IDF LwIP menuconfig system
+    // unsafe { esp_idf_sys::ip_napt_enable_no(router_interface as u8, 1) };
+
+    let status = wifi.get_status();
+
+    if let Status(
+        ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(ip_settings))),
+        ApStatus::Started(ApIpStatus::Done),
+    ) = status
+    {
+        info!("NAPT enabled on the WiFi SoftAP, and WiFi still OK, about to do some pings via the SoftAP interface");
+
+        let ping_summary = ping::EspPing::new(router_interface)
+            .ping(ip_settings.subnet.gateway, &Default::default())?;
+        if ping_summary.transmitted != ping_summary.received {
+            warn!(
+                "Pinging gateway {} resulted in timeouts",
+                ip_settings.subnet.gateway
+            );
+        }
+
+        info!("Pinging done");
+    } else {
+        bail!("Unexpected Wifi status: {:?}", status);
+    }
+
+    Ok(())
 }
 
 // Kaluga needs customized screen orientation commands
@@ -554,4 +624,12 @@ impl ili9341::Mode for KalugaOrientation {
             Self::Portrait | Self::PortraitFlipped => false,
         }
     }
+}
+
+pub fn from_cstr(buf: &[u8]) -> std::borrow::Cow<'_, str> {
+    // We have to find the first '\0' ourselves, because the passed buffer might
+    // be wider than the ASCIIZ string it contains
+    let len = buf.iter().position(|e| *e == 0).unwrap() + 1;
+
+    unsafe { CStr::from_bytes_with_nul_unchecked(&buf[0..len]) }.to_string_lossy()
 }
