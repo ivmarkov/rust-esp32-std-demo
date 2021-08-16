@@ -1,8 +1,6 @@
 # Rust on ESP32 "Hello, World" app
 
-A demo binary crate for the ESP32 and ESP-IDF, which connects to WiFi, drives a small HTTP server and draws on a LED screen.
-
-**NEWS: [Preliminary support for ESP32-S2 and ESP32-C3!](#building-for-esp32-s2-and-esp32-c3)**
+A demo binary crate for the ESP32[XX] and ESP-IDF, which connects to WiFi, drives a small HTTP server and draws on a LED screen.
 
 Highlights:
 
@@ -18,8 +16,6 @@ Highlights:
 - (ESP32-S2 only) [Blink a LED](https://github.com/ivmarkov/rust-esp32-ulp-hello) by loading a pure Rust program onto the RiscV Ultra Low Power CPU
 ## Build
 
-**NOTE**: For build instructions for ESP32-S2 and ESP32-C3 please see the next section.
-
 - Install the nightly toolchain of Rust (necessary, because we utilize a few unstable Cargo features): `rustup toolchain install nightly`
 - Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: `rustup update`
 - Switch to nightly (as per above, necessary for Cargo): `rustup default nightly`
@@ -29,21 +25,16 @@ Highlights:
 - Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
 - Enter it: `cd rust-esp32-std-hello`
 - Change **lines 50 and 51** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
+- To configure the demo for your particular board, please uncomment the relevant [Rust target for your board](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L5) and comment the others
 - (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 51** to be greeted with a `Hello Rust!` message on the board's LED screen
 - (Only if you happen to have an [ESP32-S2-Kaluga-1 board](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit.html)): Uncomment **line 55** to be greeted with a `Hello Rust!` message on the board's LED screen
 - (Only if you happen to have a [Heltec LoRa 32 board](https://heltec.org/project/wifi-lora-32/)): Uncomment **line 59** to be greeted with a `Hello Rust!` message on the board's LED screen
 - (Only if you happen to have an ESP32-S2 board and can connect a LED to GPIO Pin 04 and GND): Execute `cp sdkconfig.s.esp32s2-ulp-example sdkconfig.defaults` to enable the ESP32-S2 ULP RiscV LED demo
 - Build: `cargo build` or `cargo build --release`
 
-## Building for ESP32-S2 and ESP32-C3
+## Flash (ESP32 only)
 
-* Instead of installing the [prebuilt binaries of the Rust Espressif compiler fork and the Espressif LLVM clang fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) which are sligthly behind, you need to build the compiler fork from source, as described above.
-* To configure the demo for your particular board, please uncomment either the [Rust ESP32-S2 target](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L6), or the [Rust ESP32-C3 target](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L8) and comment the others
-* Other than these two changes, please follow the build instructions from above
-
-## Flash
-
-- `cargo install espflash`
+- `cargo install espflash` (NOTE: espflash supports ONLY plain ESP32. No support for ESP32S2 and ESP32C3)
 - `espflash /dev/ttyUSB0 target/xtensa-esp32-espidf/debug/rust-esp32-std-hello`
 - Replace `dev/tttyUSB0` above with the USB port where you've connected the board
 - If espflash complains with `Error: IO error while using serial port: Operation timed out` or with error `Error: Failed to connect to the device`, just retry the flash operation
