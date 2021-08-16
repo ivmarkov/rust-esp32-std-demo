@@ -12,6 +12,7 @@ Highlights:
   - ... implemented directly in the [Rust Espressif compiler fork](https://github.com/esp-rs/rust)
 - Rust Safe APIs for various ESP-IDF services like WiFi, Ping, Httpd and logging
   - ... via [esp-idf-svc](https://crates.io/crates/esp-idf-svc) ([embedded-svc](https://crates.io/crates/embedded-svc) abstractions implemented on top of ESP-IDF)
+- NAPT support (Router from the SoftAP to the STA interface). **NOTE**: In production, do NOT leave the SoftAP interface open (without password)!
 - Driving a LED screen with the [embedded-graphics](https://crates.io/crates/embedded-graphics) Rust crate
   - via [esp-idf-hal](https://crates.io/crates/esp-idf-hal) ([embedded-hal](https://crates.io/crates/embedded-hal) drivers implemented on top of ESP-IDF)
 - (ESP32-S2 only) [Blink a LED](https://github.com/ivmarkov/rust-esp32-ulp-hello) by loading a pure Rust program onto the RiscV Ultra Low Power CPU
@@ -31,7 +32,7 @@ Highlights:
 - (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 51** to be greeted with a `Hello Rust!` message on the board's LED screen
 - (Only if you happen to have an [ESP32-S2-Kaluga-1 board](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit.html)): Uncomment **line 55** to be greeted with a `Hello Rust!` message on the board's LED screen
 - (Only if you happen to have a [Heltec LoRa 32 board](https://heltec.org/project/wifi-lora-32/)): Uncomment **line 59** to be greeted with a `Hello Rust!` message on the board's LED screen
-- (Only if you happen to have an ESP32-S2 board and can connect a LED to GPIO Pin 04 and GND): Execute `cp sdkconfig.default.esp32s2-ulp-example sdkconfig.default` (or `cp sdkconfig.default.esp32s2-ulp-example sdkconfig.default.debug`) to enable the ESP32-S2 ULP RiscV LED demo
+- (Only if you happen to have an ESP32-S2 board and can connect a LED to GPIO Pin 04 and GND): Execute `cp sdkconfig.s.esp32s2-ulp-example sdkconfig.defaults` to enable the ESP32-S2 ULP RiscV LED demo
 - Build: `cargo build` or `cargo build --release`
 
 ## Building for ESP32-S2 and ESP32-C3

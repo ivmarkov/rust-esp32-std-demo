@@ -36,6 +36,7 @@ configurable-env = true
 extra-link-arg = true
 build-std = ["std", "panic_abort"]
 build-std-features = ["panic_immediate_abort"]
+patch-in-config = true
 
 [env]
 ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
@@ -46,8 +47,7 @@ ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
 # The older Cargo version spits out `warning:Unknown argument "configurable-env = true"`
 ESP_IDF_SYS_GLOB_0 = { value = "/sdkconfig" }
 ESP_IDF_SYS_GLOB_1 = { value = "/sdkconfig.debug" }
-ESP_IDF_SYS_GLOB_2 = { value = "/sdkconfig.default" }
-ESP_IDF_SYS_GLOB_3 = { value = "/sdkconfig.default.debug" }
+ESP_IDF_SYS_GLOB_2 = { value = "/sdkconfig.defaults" }
 
 # Uncomment both lines below if you plan to place and use a custom partition table, "partitions.csv" at the root of this project
 # Note that the espflash utility is always flashing with its own partition table, which contains a single factory app of 3M max,

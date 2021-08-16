@@ -566,35 +566,17 @@ fn wifi() -> Result<Box<EspWifi>> {
     Ok(wifi)
 }
 
-// Not working yet, TBC why; do we need to set an explicit route from the STA to the SoftAP netif?
 fn test_napt(wifi: &EspWifi) -> Result<()> {
     let router_interface = wifi.with_router_netif(|netif| netif.unwrap().get_index());
 
-    // Uncomment this line if you have enabled NAPT in the ESP-IDF LwIP menuconfig system
-    // unsafe { esp_idf_sys::ip_napt_enable_no(router_interface as u8, 1) };
+    unsafe {
+        esp_idf_sys::ip_napt_enable_no(
+            router_interface as u8 - 1, /* This function takes an index which is 1 less than what ESP Netif returns, which is extremely confusing! */
+            1,
+        )
+    };
 
-    let status = wifi.get_status();
-
-    if let Status(
-        ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(ip_settings))),
-        ApStatus::Started(ApIpStatus::Done),
-    ) = status
-    {
-        info!("NAPT enabled on the WiFi SoftAP, and WiFi still OK, about to do some pings via the SoftAP interface");
-
-        let ping_summary = ping::EspPing::new(router_interface)
-            .ping(ip_settings.subnet.gateway, &Default::default())?;
-        if ping_summary.transmitted != ping_summary.received {
-            warn!(
-                "Pinging gateway {} resulted in timeouts",
-                ip_settings.subnet.gateway
-            );
-        }
-
-        info!("Pinging done");
-    } else {
-        bail!("Unexpected Wifi status: {:?}", status);
-    }
+    info!("NAPT enabled on the WiFi SoftAP!");
 
     Ok(())
 }

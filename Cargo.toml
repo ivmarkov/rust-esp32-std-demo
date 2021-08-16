@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.15.0"
+version = "0.15.1"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -27,7 +27,8 @@ opt-level = "s"
 #   Always include this patch in your workspace / final binary crate as it is patching libc
 #   to support the riscv32 architecture with newlib. A similar patch for the xtensa architecture
 #   (ESP32, ESP32S2, ESP32S3) is already in libc since libc 0.2.76
-libc = { git = "https://github.com/ivmarkov/libc.git" }
+# NOTE: Since 2021-08-12, you DON'T these from below, when using stock Rust 1.56!
+libc = { git = "https://github.com/ivmarkov/libc.git" } # For The 1.54 compiler fork
 #libc = { git = "https://github.com/ivmarkov/libc.git", branch = "version_0.2.98" } # This is for the compiler forks older than 1.54
 
 [dependencies]
@@ -36,7 +37,7 @@ log = "0.4"
 url = "2"
 esp-idf-sys = "0.17"
 embedded-svc = "0.8"
-esp-idf-svc = { version = "0.17", features = ["binstart"] }
+esp-idf-svc = { version = "0.17.1", features = ["binstart"] }
 esp-idf-hal = "0.17"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
