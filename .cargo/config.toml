@@ -5,7 +5,7 @@
 target = "xtensa-esp32-espidf"
 #target = "xtensa-esp32s2-espidf"
 #target = "riscv32imc-esp-espidf"
-#target = "riscv32imac-esp-espidf"
+#target = "riscv32imac-esp-espidf" # To be removed once 1.56 becomes table and the esp-rs compiler fork is rebased on top of it
 
 # These are the old targets you should use with the older, V1.50 compiler and the
 # current pre-compiled compiler binaries from Espressif
