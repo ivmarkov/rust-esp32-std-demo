@@ -2,6 +2,9 @@ use std::path::PathBuf;
 
 // Necessary because of this issue: https://github.com/rust-lang/cargo/issues/9641
 fn main() -> anyhow::Result<()> {
+    pio::kconfig::CfgArgs::output_propagated("ESP_IDF")?;
+    pio::cargo::build::LinkArgs::output_propagated("ESP_IDF")?;
+
     let mcu = std::env::var("DEP_ESP_IDF_MCU").map_err(|s| anyhow::anyhow!(s))?;
 
     if mcu == "esp32s2" {
@@ -16,5 +19,6 @@ fn main() -> anyhow::Result<()> {
     }
 
     println!("cargo:rustc-cfg={}", mcu);
-    pio::cargo::build::LinkArgs::output_propagated("ESP_IDF")
+
+    Ok(())
 }

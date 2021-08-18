@@ -52,5 +52,5 @@ ESP_IDF_SYS_GLOB_2 = { value = "/sdkconfig.defaults" }
 # Note that the espflash utility is always flashing with its own partition table, which contains a single factory app of 3M max,
 # so you should use the esptool.py utility to flash the custom partition table and the app
 # Also see above regarding the Cargo version
-#ESP_IDF_SYS_GLOB_2 = { value = "/partitions.csv" }
+#ESP_IDF_SYS_GLOB_3 = { value = "/partitions.csv" }
 #ESP_IDF_SYS_PIO_CONF_0 = { value = "board_build.partitions = partitions.csv" }

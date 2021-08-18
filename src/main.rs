@@ -75,17 +75,19 @@ fn main() -> Result<()> {
 
     // ... or uncomment this if you have a Kaluga-1 ESP32-S2 board
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
+    // #[cfg(esp32s2)]
     // kaluga_hello_world(true)?;
 
     // ... or uncomment this if you have a Heltec LoRa 32 board
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
     // heltec_hello_world()?;
 
-    let wifi = wifi()?;
+    let mut wifi = wifi()?;
 
     test_tcp()?;
 
-    test_napt(&wifi)?;
+    #[cfg(esp_idf_config_lwip_ipv4_napt)]
+    test_napt(&mut wifi)?;
 
     let mutex = Arc::new((Mutex::new(None), Condvar::new()));
 
@@ -566,15 +568,9 @@ fn wifi() -> Result<Box<EspWifi>> {
     Ok(wifi)
 }
 
-fn test_napt(wifi: &EspWifi) -> Result<()> {
-    let router_interface = wifi.with_router_netif(|netif| netif.unwrap().get_index());
-
-    unsafe {
-        esp_idf_sys::ip_napt_enable_no(
-            router_interface as u8 - 1, /* This function takes an index which is 1 less than what ESP Netif returns, which is extremely confusing! */
-            1,
-        )
-    };
+#[cfg(esp_idf_config_lwip_ipv4_napt)]
+fn test_napt(wifi: &mut EspWifi) -> Result<()> {
+    wifi.with_router_netif_mut(|netif| netif.unwrap().enable_napt(true));
 
     info!("NAPT enabled on the WiFi SoftAP!");
 
