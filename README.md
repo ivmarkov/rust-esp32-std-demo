@@ -5,14 +5,14 @@ A demo binary crate for the ESP32[XX] and ESP-IDF, which connects to WiFi, drive
 Highlights:
 
 - **Pure Rust and pure Cargo build!** No CMake, no PlatformIO, no C helpers
-  - ... via [esp-idf-sys](https://crates.io/crates/esp-idf-sys) and [cargo-pio](https://crates.io/crates/cargo-pio)
+  - ... via [esp-idf-sys](https://crates.io/crates/esp-idf-sys) and [embuild](https://crates.io/crates/embuild)
 - **Support for Rust STD** (threads, console, TCP/IP) safe APIs
   - ... implemented directly in the [Rust Espressif compiler fork](https://github.com/esp-rs/rust)
 - Rust Safe APIs for various ESP-IDF services like WiFi, Ping, Httpd and logging
   - ... via [esp-idf-svc](https://crates.io/crates/esp-idf-svc) ([embedded-svc](https://crates.io/crates/embedded-svc) abstractions implemented on top of ESP-IDF)
 - NAPT support (Router from the SoftAP to the STA interface). **NOTE**: In production, do NOT leave the SoftAP interface open (without password)!
 - Driving a LED screen with the [embedded-graphics](https://crates.io/crates/embedded-graphics) Rust crate
-  - via [esp-idf-hal](https://crates.io/crates/esp-idf-hal) ([embedded-hal](https://crates.io/crates/embedded-hal) drivers implemented on top of ESP-IDF)
+  - ... via [esp-idf-hal](https://crates.io/crates/esp-idf-hal) ([embedded-hal](https://crates.io/crates/embedded-hal) drivers implemented on top of ESP-IDF)
 - (ESP32-S2 only) [Blink a LED](https://github.com/ivmarkov/rust-esp32-ulp-hello) by loading a pure Rust program onto the RiscV Ultra Low Power CPU
 ## Build
 
@@ -20,8 +20,8 @@ Highlights:
 - Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: `rustup update`
 - Switch to nightly (as per above, necessary for Cargo): `rustup default nightly`
 - Download and install the [prebuilt binaries of the Rust Espressif compiler fork and the Espressif LLVM clang fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust Espressif compiler fork & Espressif LLVM clang fork build instructions](https://github.com/esp-rs/rust);
-- The build is using the `cargo-pio-link` linker wrapper, so install [cargo-pio](https://crates.io/crates/cargo-pio):
-  - `cargo install cargo-pio`
+- The build is using the `ldproxy` linker wrapper from `embuild`, so install [ldproxy](https://crates.io/crates/embuild/ldproxy):
+  - `cargo install ldproxy`
 - Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
 - Enter it: `cd rust-esp32-std-hello`
 - Change **lines 50 and 51** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
@@ -87,9 +87,9 @@ Here are two sample partition tables:
 ## Monitor
 
 - Once flashed, the board can be connected with any suitable serial monitor, e.g.:
-  - Cargo pio itself: `cargo pio exec -- device monitor -p /dev/ttyUSB0 -b 115200 --raw`
   - Built-in Linux/MacOS screen: `screen /dev/ttyUSB0 115200` (use `Ctrl+A` and then type `:quit` to stop it)
   - Miniterm: `miniterm --raw /dev/ttyUSB0 115200`
+  - Cargo PIO: `cargo pio exec -- device monitor -p /dev/ttyUSB0 -b 115200 --raw` (Issue `cargo install cargo-pio` first)
   - ESPMonitor: `cargo espmonitor --speed 115200 /dev/ttyUSB0` (you need to `cargo install espmonitor` first)
 
 - You should see more or less the following:

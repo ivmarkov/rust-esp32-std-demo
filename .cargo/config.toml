@@ -7,13 +7,13 @@ target = "xtensa-esp32-espidf"
 #target = "riscv32imc-esp-espidf"
 
 [target.xtensa-esp32-espidf]
-linker = "cargo-pio-link"
+linker = "ldproxy"
 
 [target.xtensa-esp32s2-espidf]
-linker = "cargo-pio-link"
+linker = "ldproxy"
 
 [target.riscv32imc-esp-espidf]
-linker = "cargo-pio-link"
+linker = "ldproxy"
 
 [unstable]
 configurable-env = true # No longer necessary since 1.56, as it was stabilized: https://github.com/rust-lang/cargo/blob/master/src/cargo/core/features.rs#L698
