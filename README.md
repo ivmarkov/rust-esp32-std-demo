@@ -14,6 +14,7 @@ Highlights:
 - Driving a LED screen with the [embedded-graphics](https://crates.io/crates/embedded-graphics) Rust crate
   - ... via [esp-idf-hal](https://crates.io/crates/esp-idf-hal) ([embedded-hal](https://crates.io/crates/embedded-hal) drivers implemented on top of ESP-IDF)
 - (ESP32-S2 only) [Blink a LED](https://github.com/ivmarkov/rust-esp32-ulp-hello) by loading a pure Rust program onto the RiscV Ultra Low Power CPU
+
 ## Build
 
 - Install the nightly toolchain of Rust (necessary, because we utilize a few unstable Cargo features): `rustup toolchain install nightly`
@@ -87,9 +88,9 @@ Here are two sample partition tables:
 ## Monitor
 
 - Once flashed, the board can be connected with any suitable serial monitor, e.g.:
+  - **NEW**: Cargo PIO (this one **decodes stack traces**!): `cargo pio espidf monitor /dev/ttyUSB0` (Issue `cargo install cargo-pio` first)
   - Built-in Linux/MacOS screen: `screen /dev/ttyUSB0 115200` (use `Ctrl+A` and then type `:quit` to stop it)
   - Miniterm: `miniterm --raw /dev/ttyUSB0 115200`
-  - Cargo PIO: `cargo pio exec -- device monitor -p /dev/ttyUSB0 -b 115200 --raw` (Issue `cargo install cargo-pio` first)
   - ESPMonitor: `cargo espmonitor --speed 115200 /dev/ttyUSB0` (you need to `cargo install espmonitor` first)
 
 - You should see more or less the following:
