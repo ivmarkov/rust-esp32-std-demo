@@ -88,7 +88,9 @@ Here are two sample partition tables:
 ## Monitor
 
 - Once flashed, the board can be connected with any suitable serial monitor, e.g.:
-  - **NEW**: Cargo PIO (this one **decodes stack traces**!): `cargo pio espidf monitor /dev/ttyUSB0` (Issue `cargo install cargo-pio` first)
+  - **NEW**: Cargo PIO (this one **decodes stack traces**!): `cargo pio espidf monitor /dev/ttyUSB0`
+    - To use it, issue `cargo install cargo-pio` first
+    - Please run it from within the `rust-esp32-std-hello` project directory, or else the built ELF file will not be detected, and the stack traces will not be decoded!
   - Built-in Linux/MacOS screen: `screen /dev/ttyUSB0 115200` (use `Ctrl+A` and then type `:quit` to stop it)
   - Miniterm: `miniterm --raw /dev/ttyUSB0 115200`
   - ESPMonitor: `cargo espmonitor --speed 115200 /dev/ttyUSB0` (you need to `cargo install espmonitor` first)
