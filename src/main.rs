@@ -52,10 +52,10 @@ const SSID: &str = "ssid";
 const PASS: &str = "pass";
 
 #[cfg(esp32s2)]
-include!(env!("CARGO_PIO_SYMGEN_RUNNER_SYMBOLS_FILE"));
+include!(env!("EMBUILD_SYMGEN_RUNNER_SYMBOLS_FILE"));
 
 #[cfg(esp32s2)]
-const ULP: &[u8] = include_bytes!(env!("CARGO_PIO_BINGEN_RUNNER_BIN_FILE"));
+const ULP: &[u8] = include_bytes!(env!("EMBUILD_BINGEN_RUNNER_BIN_FILE"));
 
 fn main() -> Result<()> {
     test_print();

@@ -1,13 +1,13 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.17.0"
+version = "0.17.1"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
 keywords = ["embedded", "svc", "idf", "esp-idf", "esp32"]
 description = "A demo binary crate for the ESP32 and ESP-IDF, which connects to WiFi, drives a small HTTP server and draws on a LED screen"
 repository = "https://github.com/ivmarkov/rust-esp32-std-hello"
-license = "MIT"
+license = "MIT OR Apache-2.0"
 readme = "README.md"
 
 # No xtensa in regular compiler yet
@@ -27,8 +27,8 @@ opt-level = "s"
 #   Always include this patch in your workspace / final binary crate as it is patching libc
 #   to support the riscv32 architecture with newlib. A similar patch for the xtensa architecture
 #   (ESP32, ESP32S2, ESP32S3) is already in libc since libc 0.2.76
-# NOTE: Since 2021-08-12, you DON'T these from below, when using stock Rust 1.56!
-#libc = { git = "https://github.com/ivmarkov/libc.git" } # For The 1.54 compiler fork
+# NOTE: Since 2021-08-12, you DON'T need these below, when using stock Rust 1.56!
+libc = { git = "https://github.com/ivmarkov/libc.git" } # For The 1.54 compiler fork
 #libc = { git = "https://github.com/ivmarkov/libc.git", branch = "version_0.2.98" } # This is for the compiler forks older than 1.54
 
 [dependencies]
