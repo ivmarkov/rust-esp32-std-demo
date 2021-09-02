@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#![allow(clippy::single_component_path_imports)]
 
 use std::ffi::CStr;
 use std::io::{Read, Write};
@@ -67,7 +68,8 @@ fn main() -> Result<()> {
     // Enough playing.
     // The real demo: start WiFi and ignite Httpd
 
-    env::set_var("RUST_BACKTRACE", "1"); // Get some nice backtraces from Anyhow
+    // TODO: Needs proper backtrace support in Rust backtrace-rs
+    // env::set_var("RUST_BACKTRACE", "1"); // Get some nice backtraces from Anyhow
 
     // Uncomment this if you have a TTGO ESP32 board
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
@@ -121,6 +123,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::vec_init_then_push)]
 fn test_print() {
     // Start simple
     println!("Hello, world from Rust!");
@@ -172,7 +175,7 @@ fn test_tcp() -> Result<()> {
         );
     }
 
-    stream.write("GET / HTTP/1.0\n\n".as_bytes())?;
+    stream.write_all("GET / HTTP/1.0\n\n".as_bytes())?;
 
     let mut result = Vec::new();
 
