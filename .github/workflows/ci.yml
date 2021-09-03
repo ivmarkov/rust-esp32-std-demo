@@ -16,7 +16,7 @@ jobs:
   #     - name: Setup | Rust
   #       uses: ATiltedTree/setup-rust@v1
   #       with:
-  #         rust-version: unstable
+  #         rust-version: nightly
   #         components: clippy
   #     - name: Build | Lint
   #       run: cargo clippy
@@ -29,6 +29,6 @@ jobs:
       - name: Setup | Rust
         uses: ATiltedTree/setup-rust@v1
         with:
-          rust-version: unstable
+          rust-version: nightly
       - name: Build | Compile
         run: cargo build --target riscv32imc-esp-espidf
