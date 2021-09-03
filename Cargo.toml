@@ -22,15 +22,6 @@ opt-level = "z"
 [profile.dev]
 opt-level = "s"
 
-[patch.crates-io]
-# If you plan on using a riscv32 MCU like ESP32C3:
-#   Always include this patch in your workspace / final binary crate as it is patching libc
-#   to support the riscv32 architecture with newlib. A similar patch for the xtensa architecture
-#   (ESP32, ESP32S2, ESP32S3) is already in libc since libc 0.2.76
-# NOTE: Since 2021-08-12, you DON'T need these below, when using stock Rust 1.56!
-libc = { git = "https://github.com/ivmarkov/libc.git" } # For The 1.54 compiler fork
-#libc = { git = "https://github.com/ivmarkov/libc.git", branch = "version_0.2.98" } # This is for the compiler forks older than 1.54
-
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
@@ -44,12 +35,11 @@ embedded-graphics = "0.7"
 display-interface = "0.4"
 display-interface-spi = "0.4"
 st7789 = "0.6"
-ili9341 = { version = "0.5", git = "https://github.com/ivmarkov/ili9341-rs" }
+ili9341 = { version = "0.5", git = "https://github.com/yuri91/ili9341-rs" }
 ssd1306 = "0.7"
 
-#backtrace = { version = "0.3.56", path = "../backtrace-rs" }
-#backtrace = { version = "0.3.56", git = "https://github.com/ivmarkov/backtrace-rs.git", branch = "esp-idf" }
-#getrandom = { git = "https://github.com/ivmarkov/getrandom.git", branch = "0.1" }
+#backtrace = { git = "https://github.com/ivmarkov/backtrace-rs.git" }
+#getrandom = { git = "https://github.com/ivmarkov/getrandom.git" }
 
 [build-dependencies]
 embuild = "0.23.1"
