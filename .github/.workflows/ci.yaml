@@ -1,0 +1,34 @@
+name: Rust
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  # lint:
+  #   name: Lint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Setup | Checkout
+  #       uses: actions/checkout@v2
+  #     - name: Setup | Rust
+  #       uses: ATiltedTree/setup-rust@v1
+  #       with:
+  #         rust-version: unstable
+  #         components: clippy
+  #     - name: Build | Lint
+  #       run: cargo clippy
+  compile:
+    name: Compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v2
+      - name: Setup | Rust
+        uses: ATiltedTree/setup-rust@v1
+        with:
+          rust-version: unstable
+      - name: Build | Compile
+        run: cargo build --target riscv32imc-esp-espidf
