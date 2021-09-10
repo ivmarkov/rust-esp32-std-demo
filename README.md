@@ -20,7 +20,10 @@ Highlights:
 - Install the nightly toolchain of Rust (necessary, because we utilize a few unstable Cargo features): `rustup toolchain install nightly`
 - Make sure the toolchains are up to date, as one of the utilized unstable Cargo features landed just a few months ago: `rustup update`
 - Switch to nightly (as per above, necessary for Cargo): `rustup default nightly`
-- Download and install the [prebuilt binaries of the Rust Espressif compiler fork and the Espressif LLVM clang fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust Espressif compiler fork & Espressif LLVM clang fork build instructions](https://github.com/esp-rs/rust);
+- Download and install the [prebuilt binaries of the Rust Espressif compiler fork and the Espressif LLVM Clang fork](https://github.com/espressif/rust-esp32-example/blob/main/docs/rust-on-xtensa.md) or follow the [Rust Espressif compiler fork & Espressif LLVM Clang fork build instructions](https://github.com/esp-rs/rust);
+  - **NOTE** For ESP32-C3, you can just use the stock nightly Rust compiler, and a recent, stock Clang (as in Clang 11+)
+- If using the custom Espressif Clang, make sure that you DON'T have a system Clang installed as well, because even if you have the Espressif one first on your `$PATH`, Bindgen will still pick the system one
+  - A workaround that does not require uninstalling the system Clang is to do `export LIBCLANG_PATH=<path to the Espressif Clang lib directory>` prior to continuing the build process
 - The build is using the `ldproxy` linker wrapper from `embuild`, so install [ldproxy](https://crates.io/crates/embuild/ldproxy):
   - `cargo install ldproxy`
 - Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
