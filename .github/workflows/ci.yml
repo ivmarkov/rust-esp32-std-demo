@@ -27,7 +27,7 @@ jobs:
       - name: Setup | ldproxy
         run: cargo install ldproxy
       - name: Build | Fmt Check
-        run: cargo fmt --check
+        run: cargo fmt -- --check
       - name: Build | Clippy
         run: cargo clippy --no-deps --target riscv32imc-esp-espidf
       - name: Build | Compile
