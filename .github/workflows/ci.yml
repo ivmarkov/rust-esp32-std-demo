@@ -9,19 +9,6 @@ on:
     - cron: '50 6 * * *'
 
 jobs:
-  # lint:
-  #   name: Lint
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Setup | Checkout
-  #       uses: actions-rs/toolchain@v1
-  #     - name: Setup | Rust
-  #       uses: ATiltedTree/setup-rust@v1
-  #       with:
-  #         toolchain: nightly
-  #         components: clippy
-  #     - name: Build | Lint
-  #       run: cargo clippy
   compile:
     name: Compile
     runs-on: ubuntu-latest
@@ -32,9 +19,14 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
+          components: rustfmt, clippy
       - name: Setup | Std
         run: rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
       - name: Setup | ldproxy
         run: cargo install ldproxy
+      - name: Build | Fmt Check
+        run: cargo fmt --check
+      - name: Build | Clippy
+        run: cargo clippy --no-deps --target riscv32imc-esp-espidf
       - name: Build | Compile
         run: cargo build --target riscv32imc-esp-espidf
