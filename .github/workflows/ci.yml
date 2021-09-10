@@ -5,6 +5,8 @@ on:
     branches:
       - main
   pull_request:
+  schedule:
+    - cron: '50 6 * * *'
 
 jobs:
   # lint:
@@ -12,11 +14,11 @@ jobs:
   #   runs-on: ubuntu-latest
   #   steps:
   #     - name: Setup | Checkout
-  #       uses: actions/checkout@v2
+  #       uses: actions-rs/toolchain@v1
   #     - name: Setup | Rust
   #       uses: ATiltedTree/setup-rust@v1
   #       with:
-  #         rust-version: nightly
+  #         toolchain: nightly
   #         components: clippy
   #     - name: Build | Lint
   #       run: cargo clippy
@@ -27,9 +29,9 @@ jobs:
       - name: Setup | Checkout
         uses: actions/checkout@v2
       - name: Setup | Rust
-        uses: ATiltedTree/setup-rust@v1
+        uses: actions-rs/toolchain@v1
         with:
-          rust-version: nightly
+          toolchain: nightly
       - name: Setup | Std
         run: rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
       - name: Setup | ldproxy
