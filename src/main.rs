@@ -65,11 +65,9 @@ fn main() -> Result<()> {
 
     test_threads();
 
-    // Enough playing.
-    // The real demo: start WiFi and ignite Httpd
-
-    // TODO: Needs proper backtrace support in Rust backtrace-rs
-    // env::set_var("RUST_BACKTRACE", "1"); // Get some nice backtraces from Anyhow
+    // Get backtraces from anyhow; only works for Xtensa arch currently
+    #[cfg(arch = "xtensa")]
+    env::set_var("RUST_BACKTRACE", "1");
 
     // Uncomment this if you have a TTGO ESP32 board
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
@@ -84,6 +82,7 @@ fn main() -> Result<()> {
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
     // heltec_hello_world()?;
 
+    #[allow(unused_mut)]
     let mut wifi = wifi()?;
 
     test_tcp()?;

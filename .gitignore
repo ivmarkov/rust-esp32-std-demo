@@ -1,4 +1,5 @@
-.vscode
-.vscode/
-target
-Cargo.lock
+/.vscode
+/target
+/Cargo.lock
+**/*.rs.bk
+/.espressif

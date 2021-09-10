@@ -12,6 +12,9 @@ linker = "ldproxy"
 
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
+# Future - necessary for the experimental "native build" of esp-idf-sys
+# See also https://github.com/ivmarkov/embuild/issues/16
+#rustflags = ["-C", "default-linker-libraries"]
 
 [patch.crates-io]
 # This patch is a temporary workaround necessary until Rust 1.55 is out
