@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.17.3"
+version = "0.17.4"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -21,6 +21,9 @@ opt-level = "z"
 
 [profile.dev]
 opt-level = "s"
+
+[features]
+bind = []
 
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}

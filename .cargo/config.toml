@@ -16,17 +16,9 @@ linker = "ldproxy"
 # See also https://github.com/ivmarkov/embuild/issues/16
 #rustflags = ["-C", "default-linker-libraries"]
 
-[patch.crates-io]
-# This patch is a temporary workaround necessary until Rust 1.55 is out
-# You DON'T need it with stock nightly Rust 1.56 (but stock nightly only supports the ESP32-C3 chip)
-libc = { git = "https://github.com/ivmarkov/libc.git" }
-
 [unstable]
-configurable-env = true # No longer necessary since 1.56, as it was stabilized: https://github.com/rust-lang/cargo/blob/master/src/cargo/core/features.rs#L698
-extra-link-arg = true   # No longer necessary since 1.56, as it was stabilized: https://github.com/rust-lang/cargo/blob/master/src/cargo/core/features.rs#L695
 build-std = ["std", "panic_abort"]
 build-std-features = ["panic_immediate_abort"]
-patch-in-config = true
 
 [env]
 ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }

@@ -3,7 +3,7 @@
 
 use std::ffi::CStr;
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 use std::sync::{Condvar, Mutex};
 use std::{env, sync::atomic::*, sync::Arc, thread, time::*};
 
@@ -86,6 +86,9 @@ fn main() -> Result<()> {
     let mut wifi = wifi()?;
 
     test_tcp()?;
+
+    #[cfg(feature = "bind")]
+    test_tcp_bind()?;
 
     #[cfg(esp_idf_config_lwip_ipv4_napt)]
     test_napt(&mut wifi)?;
@@ -183,6 +186,54 @@ fn test_tcp() -> Result<()> {
     info!(
         "1.1.1.1 returned:\n=================\n{}\n=================\nSince it returned something, all is OK",
         std::str::from_utf8(&result)?);
+
+    Ok(())
+}
+
+#[cfg(feature = "bind")]
+fn test_tcp_bind() -> Result<()> {
+    fn test_tcp_bind_accept() -> Result<()> {
+        info!("About to bind a simple echo service to port 8080");
+
+        let listener = TcpListener::bind("0.0.0.0:8080")?;
+
+        for stream in listener.incoming() {
+            match stream {
+                Ok(stream) => {
+                    thread::spawn(move || {
+                        test_tcp_bind_handle_client(stream);
+                    });
+                }
+                Err(e) => {
+                    error!("Error: {}", e);
+                }
+            }
+        }
+
+        unreachable!()
+    }
+
+    fn test_tcp_bind_handle_client(mut stream: TcpStream) {
+        // read 20 bytes at a time from stream echoing back to stream
+        loop {
+            let mut read = [0; 128];
+
+            match stream.read(&mut read) {
+                Ok(n) => {
+                    if n == 0 {
+                        // connection was closed
+                        break;
+                    }
+                    stream.write(&read[0..n]).unwrap();
+                }
+                Err(err) => {
+                    panic!("{}", err);
+                }
+            }
+        }
+    }
+
+    thread::spawn(|| test_tcp_bind_accept().unwrap());
 
     Ok(())
 }
