@@ -1,11 +1,12 @@
 #![allow(unused_imports)]
 #![allow(clippy::single_component_path_imports)]
+//#![feature(backtrace)]
 
 use std::ffi::CStr;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Condvar, Mutex};
-use std::{env, sync::atomic::*, sync::Arc, thread, time::*};
+use std::{cell::RefCell, env, sync::atomic::*, sync::Arc, thread, time::*};
 
 use anyhow::*;
 use log::*;
@@ -53,10 +54,14 @@ const SSID: &str = "ssid";
 const PASS: &str = "pass";
 
 #[cfg(esp32s2)]
-include!(env!("EMBUILD_SYMGEN_RUNNER_SYMBOLS_FILE"));
+include!(env!("EMBUILD_GENERATED_SYMBOLS_FILE"));
 
 #[cfg(esp32s2)]
-const ULP: &[u8] = include_bytes!(env!("EMBUILD_BINGEN_RUNNER_BIN_FILE"));
+const ULP: &[u8] = include_bytes!(env!("EMBUILD_GENERATED_BIN_FILE"));
+
+thread_local! {
+    static TLS: RefCell<u32> = RefCell::new(13);
+}
 
 fn main() -> Result<()> {
     test_print();
@@ -143,10 +148,26 @@ fn test_threads() {
 
     println!("Rust main thread: {:?}", thread::current());
 
+    TLS.with(|tls| {
+        println!("Main TLS before change: {}", *tls.borrow());
+    });
+
+    TLS.with(|tls| *tls.borrow_mut() = 42);
+
+    TLS.with(|tls| {
+        println!("Main TLS after change: {}", *tls.borrow());
+    });
+
     for i in 0..5 {
         // Spin up another thread
         children.push(thread::spawn(move || {
             println!("This is thread number {}, {:?}", i, thread::current());
+
+            TLS.with(|tls| *tls.borrow_mut() = i);
+
+            TLS.with(|tls| {
+                println!("Inner TLS: {}", *tls.borrow());
+            });
         }));
     }
 
@@ -158,6 +179,10 @@ fn test_threads() {
         // Wait for the thread to finish. Returns a result.
         let _ = child.join();
     }
+
+    TLS.with(|tls| {
+        println!("Main TLS after threads: {}", *tls.borrow());
+    });
 
     thread::sleep(Duration::from_secs(2));
 
@@ -603,6 +628,8 @@ fn wifi() -> Result<Box<EspWifi>> {
     ) = status
     {
         info!("Wifi connected, about to do some pings");
+
+        //info!("{:#}", std::backtrace::Backtrace::capture());
 
         let ping_summary =
             ping::EspPing::default().ping(ip_settings.subnet.gateway, &Default::default())?;

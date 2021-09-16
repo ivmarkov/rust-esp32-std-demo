@@ -12,7 +12,7 @@ linker = "ldproxy"
 
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
-# Future - necessary for the experimental "native build" of esp-idf-sys
+# Future - necessary for the experimental "native build" of esp-idf-sys with ESP32C3
 # See also https://github.com/ivmarkov/embuild/issues/16
 #rustflags = ["-C", "default-linker-libraries"]
 
@@ -24,14 +24,20 @@ extra-link-arg = true   # No longer necessary since 1.56, as it was stabilized: 
 
 [env]
 ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
+#ESP_IDF_VERSION = { value = "master" } # Uncomment this and enable the esp-idf-sys "native" build feature in Cargo.toml to build against ESP-IDF master
 
-# These two configurations will pick up your custom "sdkconfig" (for release builds) / "sdkconfig.debug" (for debug bulds) that you might put in the root of the project
+# These configurations will pick up your custom "sdkconfig.release" (for release builds) / "sdkconfig.debug" (for debug bulds) that you might put in the root of the project
 # The easiest way to generate these configurations is by running "cargo pio espidf menuconfig"
-# NOTE: You need latest Cargo nightly for that, and the rustc toolchain prebuilt by Espressif currently comes with an older version of Cargo that you have to remove
-# The older Cargo version spits out `warning:Unknown argument "configurable-env = true"`
+# The 3rd one shows picks up a "defaults" file. you should use either "sdkconfig.*" or "defaults" but not both
 ESP_IDF_SYS_GLOB_0 = { value = "/sdkconfig.release" }
 ESP_IDF_SYS_GLOB_1 = { value = "/sdkconfig.debug" }
 ESP_IDF_SYS_GLOB_2 = { value = "/sdkconfig.defaults" }
+
+# Same thing but for the native build. Currently the native and PIO builds disagree how sdkconfig configuration should be passed to the ESP-IDF build
+# See https://github.com/esp-rs/esp-idf-sys/issues/10#issuecomment-919022205
+#ESP_IDF_SDKCONFIG = { value = "./sdkconfig.release", relative = true }
+#ESP_IDF_SDKCONFIG = { value = "./sdkconfig.debug", relative = true }
+#ESP_IDF_SDKCONFIG_DEFAULTS = { value = "./sdkconfig.defaults", relative = true }
 
 # Uncomment both lines below if you plan to place and use a custom partition table, "partitions.csv" at the root of this project
 # Note that the espflash utility is always flashing with its own partition table, which contains a single factory app of 3M max,

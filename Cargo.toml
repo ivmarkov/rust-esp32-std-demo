@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.17.4"
+version = "0.18.0"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -29,10 +29,11 @@ bind = []
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
 url = "2"
-esp-idf-sys = "0.19"
+#esp-idf-sys = { version = "0.20", features = ["native"] } # Uncomment this and comment the one below to enable native (as in non-PIO based) builds
+esp-idf-sys = { version = "0.20" }
 embedded-svc = "0.8.3"
-esp-idf-svc = { version = "0.19", features = ["binstart"] }
-esp-idf-hal = "0.19"
+esp-idf-svc = { version = "0.20", features = ["binstart"] }
+esp-idf-hal = "0.20"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 display-interface = "0.4"
@@ -45,7 +46,7 @@ ssd1306 = "0.7"
 #getrandom = { git = "https://github.com/ivmarkov/getrandom.git" }
 
 [build-dependencies]
-embuild = "0.23.1"
+embuild = "0.24"
 anyhow = "1"
 
 # Future; might be possible once https://github.com/rust-lang/cargo/issues/9096 hits Cargo nightly:
