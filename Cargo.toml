@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.18.0"
+version = "0.18.1"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -24,6 +24,8 @@ opt-level = "s"
 
 [features]
 bind = []
+experimental = ["esp-idf-svc/experimental", "embedded-svc/experimental"]
+native = ["esp-idf-sys/native"]
 
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
@@ -31,8 +33,8 @@ log = "0.4"
 url = "2"
 #esp-idf-sys = { version = "0.20", features = ["native"] } # Uncomment this and comment the one below to enable native (as in non-PIO based) builds
 esp-idf-sys = { version = "0.20" }
-embedded-svc = "0.8.3"
-esp-idf-svc = { version = "0.20", features = ["binstart"] }
+embedded-svc = "0.8.7"
+esp-idf-svc = { version = "0.20.1", features = ["binstart"] }
 esp-idf-hal = "0.20"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
