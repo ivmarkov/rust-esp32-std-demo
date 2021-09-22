@@ -293,10 +293,12 @@ fn test_tcp_bind_async() -> anyhow::Result<()> {
 
     info!("About to bind a simple echo service to port 8081 using async (smol-rs)!");
 
-    esp_idf_sys::esp!(unsafe { esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
-        max_fds: 5,
-        ..Default::default()
-    }) })?;
+    esp_idf_sys::esp!(unsafe {
+        esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
+            max_fds: 5,
+            ..Default::default()
+        })
+    })?;
 
     thread::spawn(move || {
         smol::block_on(test_tcp_bind()).unwrap();
