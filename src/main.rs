@@ -2,7 +2,6 @@
 #![allow(clippy::single_component_path_imports)]
 //#![feature(backtrace)]
 
-use std::ffi::CStr;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Condvar, Mutex};
@@ -12,6 +11,8 @@ use anyhow::*;
 use log::*;
 
 use url;
+
+use smol;
 
 use embedded_svc::anyerror::*;
 use embedded_svc::httpd::registry::*;
@@ -94,6 +95,9 @@ fn main() -> Result<()> {
 
     #[cfg(feature = "bind")]
     test_tcp_bind()?;
+
+    #[cfg(all(feature = "bind", esp_idf_version = "4.4"))]
+    test_tcp_bind_async()?;
 
     #[cfg(esp_idf_config_lwip_ipv4_napt)]
     test_napt(&mut wifi)?;
@@ -225,6 +229,8 @@ fn test_tcp_bind() -> Result<()> {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
+                    info!("Accepted client");
+
                     thread::spawn(move || {
                         test_tcp_bind_handle_client(stream);
                     });
@@ -259,6 +265,42 @@ fn test_tcp_bind() -> Result<()> {
     }
 
     thread::spawn(|| test_tcp_bind_accept().unwrap());
+
+    Ok(())
+}
+
+#[cfg(all(feature = "bind", esp_idf_version = "4.4"))]
+fn test_tcp_bind_async() -> anyhow::Result<()> {
+    async fn test_tcp_bind() -> smol::io::Result<()> {
+        /// Echoes messages from the client back to it.
+        async fn echo(stream: smol::Async<TcpStream>) -> smol::io::Result<()> {
+            smol::io::copy(&stream, &mut &stream).await?;
+            Ok(())
+        }
+
+        // Create a listener.
+        let listener = smol::Async::<TcpListener>::bind(([0, 0, 0, 0], 8081))?;
+
+        // Accept clients in a loop.
+        loop {
+            let (stream, peer_addr) = listener.accept().await?;
+            info!("Accepted client: {}", peer_addr);
+
+            // Spawn a task that echoes messages from the client back to it.
+            smol::spawn(echo(stream)).detach();
+        }
+    }
+
+    info!("About to bind a simple echo service to port 8081 using async (smol-rs)!");
+
+    esp_idf_sys::esp!(unsafe { esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
+        max_fds: 5,
+        ..Default::default()
+    }) })?;
+
+    thread::spawn(move || {
+        smol::block_on(test_tcp_bind()).unwrap();
+    });
 
     Ok(())
 }
@@ -677,17 +719,6 @@ impl ili9341::Mode for KalugaOrientation {
     }
 
     fn is_landscape(&self) -> bool {
-        match self {
-            Self::Landscape | Self::LandscapeFlipped => true,
-            Self::Portrait | Self::PortraitFlipped => false,
-        }
+        matches!(self, Self::Landscape | Self::LandscapeFlipped)
     }
-}
-
-pub fn from_cstr(buf: &[u8]) -> std::borrow::Cow<'_, str> {
-    // We have to find the first '\0' ourselves, because the passed buffer might
-    // be wider than the ASCIIZ string it contains
-    let len = buf.iter().position(|e| *e == 0).unwrap() + 1;
-
-    unsafe { CStr::from_bytes_with_nul_unchecked(&buf[0..len]) }.to_string_lossy()
 }

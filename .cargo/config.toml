@@ -37,7 +37,7 @@ ESP_IDF_SYS_GLOB_2 = { value = "/sdkconfig.defaults" }
 # See https://github.com/esp-rs/esp-idf-sys/issues/10#issuecomment-919022205
 #ESP_IDF_SDKCONFIG = { value = "./sdkconfig.release", relative = true }
 #ESP_IDF_SDKCONFIG = { value = "./sdkconfig.debug", relative = true }
-#ESP_IDF_SDKCONFIG_DEFAULTS = { value = "./sdkconfig.defaults", relative = true }
+ESP_IDF_SDKCONFIG_DEFAULTS = { value = "./sdkconfig.defaults", relative = true }
 
 # Uncomment both lines below if you plan to place and use a custom partition table, "partitions.csv" at the root of this project
 # Note that the espflash utility is always flashing with its own partition table, which contains a single factory app of 3M max,
