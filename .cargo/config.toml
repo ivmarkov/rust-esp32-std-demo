@@ -24,7 +24,7 @@ extra-link-arg = true   # No longer necessary since 1.56, as it was stabilized: 
 
 [env]
 ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
-#ESP_IDF_VERSION = { value = "master" } # Uncomment this and enable the esp-idf-sys "native" build feature in Cargo.toml to build against ESP-IDF master
+#ESP_IDF_VERSION = { value = "master" } # Uncomment this and enable the esp-idf-sys "native" build feature to build against ESP-IDF master
 
 # These configurations will pick up your custom "sdkconfig.release" (for release builds) / "sdkconfig.debug" (for debug bulds) that you might put in the root of the project
 # The easiest way to generate these configurations is by running "cargo pio espidf menuconfig"
@@ -32,6 +32,7 @@ ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
 ESP_IDF_SYS_GLOB_0 = { value = "/sdkconfig.release" }
 ESP_IDF_SYS_GLOB_1 = { value = "/sdkconfig.debug" }
 ESP_IDF_SYS_GLOB_2 = { value = "/sdkconfig.defaults" }
+ESP_IDF_SYS_GLOB_3 = { value = "/sdkconfig.defaults.*" }
 
 # Same thing but for the native build. Currently the native and PIO builds disagree how sdkconfig configuration should be passed to the ESP-IDF build
 # See https://github.com/esp-rs/esp-idf-sys/issues/10#issuecomment-919022205
@@ -43,5 +44,5 @@ ESP_IDF_SDKCONFIG_DEFAULTS = { value = "./sdkconfig.defaults", relative = true }
 # Note that the espflash utility is always flashing with its own partition table, which contains a single factory app of 3M max,
 # so you should use the esptool.py utility to flash the custom partition table and the app
 # Also see above regarding the Cargo version
-#ESP_IDF_SYS_GLOB_3 = { value = "/partitions.csv" }
+#ESP_IDF_SYS_GLOB_4 = { value = "/partitions.csv" }
 #ESP_IDF_SYS_PIO_CONF_0 = { value = "board_build.partitions = partitions.csv" }
