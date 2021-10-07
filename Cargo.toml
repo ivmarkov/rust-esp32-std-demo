@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.18.3"
+version = "0.18.4"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
