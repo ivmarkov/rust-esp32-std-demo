@@ -15,14 +15,12 @@ use url;
 use smol;
 
 use embedded_svc::anyerror::*;
-use embedded_svc::http::client::*;
 use embedded_svc::httpd::registry::*;
 use embedded_svc::httpd::*;
 use embedded_svc::io;
 use embedded_svc::ping::Ping;
 use embedded_svc::wifi::*;
 
-use esp_idf_svc::http::client::*;
 use esp_idf_svc::httpd as idf;
 use esp_idf_svc::httpd::ServerRegistry;
 use esp_idf_svc::netif::*;
@@ -332,7 +330,8 @@ fn test_tcp_bind_async() -> anyhow::Result<()> {
 
 #[cfg(feature = "experimental")]
 fn test_https_client() -> Result<()> {
-    use embedded_svc::http::{self, client::HttpResponse, status, HttpHeaders, HttpStatus};
+    use embedded_svc::http::{self, client::*, status, HttpHeaders, HttpStatus};
+    use esp_idf_svc::http::client::*;
 
     let url = String::from("https://google.com");
 
