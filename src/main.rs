@@ -15,11 +15,14 @@ use url;
 use smol;
 
 use embedded_svc::anyerror::*;
+use embedded_svc::http::client::*;
 use embedded_svc::httpd::registry::*;
 use embedded_svc::httpd::*;
+use embedded_svc::io;
 use embedded_svc::ping::Ping;
 use embedded_svc::wifi::*;
 
+use esp_idf_svc::http::client::*;
 use esp_idf_svc::httpd as idf;
 use esp_idf_svc::httpd::ServerRegistry;
 use esp_idf_svc::netif::*;
@@ -99,6 +102,9 @@ fn main() -> Result<()> {
     #[cfg(all(feature = "bind", esp_idf_version = "4.4"))]
     test_tcp_bind_async()?;
 
+    #[cfg(feature = "experimental")]
+    test_https_client()?;
+
     #[cfg(esp_idf_config_lwip_ipv4_napt)]
     test_napt(&mut wifi)?;
 
@@ -145,6 +151,23 @@ fn test_print() {
     children.push("foo");
     children.push("bar");
     println!("More complex print {:?}", children);
+}
+
+#[allow(deprecated)]
+fn test_atomics() {
+    let a = AtomicUsize::new(0);
+    let v1 = a.compare_and_swap(0, 1, Ordering::SeqCst);
+    let v2 = a.swap(2, Ordering::SeqCst);
+
+    let (r1, r2) = unsafe {
+        // don't optimize our atomics out
+        let r1 = core::ptr::read_volatile(&v1);
+        let r2 = core::ptr::read_volatile(&v2);
+
+        (r1, r2)
+    };
+
+    println!("Result: {}, {}", r1, r2);
 }
 
 fn test_threads() {
@@ -307,21 +330,29 @@ fn test_tcp_bind_async() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[allow(deprecated)]
-fn test_atomics() {
-    let a = AtomicUsize::new(0);
-    let v1 = a.compare_and_swap(0, 1, Ordering::SeqCst);
-    let v2 = a.swap(2, Ordering::SeqCst);
+#[cfg(feature = "experimental")]
+fn test_https_client() -> Result<()> {
+    use embedded_svc::http::{self, client::HttpResponse, status, HttpHeaders, HttpStatus};
 
-    let (r1, r2) = unsafe {
-        // don't optimize our atomics out
-        let r1 = core::ptr::read_volatile(&v1);
-        let r2 = core::ptr::read_volatile(&v2);
+    let url = String::from("https://google.com");
 
-        (r1, r2)
-    };
+    info!("About to fetch content from {}", url);
 
-    println!("Result: {}, {}", r1, r2);
+    let mut client = EspHttpClient::new_default()?;
+
+    let response = client.get(&url)?.submit()?;
+
+    let mut body = Vec::new();
+    io::StdIO(response.into_payload())
+        .take(3084)
+        .read_to_end(&mut body)?;
+
+    info!(
+        "Body (truncated to 3K):\n{:?}",
+        String::from_utf8_lossy(&body).into_owned()
+    );
+
+    Ok(())
 }
 
 #[allow(dead_code)]
