@@ -39,67 +39,32 @@ Highlights:
 - If you would like to see the async networking in action, use the following build command instead:
   - `export ESP_IDF_VERSION=master; cargo build --features native,bind`
 
-## Flash (ESP32 only)
+## Flash
 
-- `cargo install espflash` (NOTE: espflash supports ONLY plain ESP32. No support for ESP32S2 and ESP32C3)
-- `espflash /dev/ttyUSB0 target/xtensa-esp32-espidf/debug/rust-esp32-std-hello`
-- Replace `dev/tttyUSB0` above with the USB port where you've connected the board
+- `cargo install espflash`
+- `espflash /dev/ttyUSB0 target/[xtensa-esp32-espidf|xtensa-esp32s2-espidf|riscv32imc-esp-espidf]/debug/rust-esp32-std-hello`
+- Replace `dev/ttyUSB0` above with the USB port where you've connected the board
 - If espflash complains with `Error: IO error while using serial port: Operation timed out` or with error `Error: Failed to connect to the device`, just retry the flash operation
 
 **NOTE**: The above commands do use [`espflash`](https://crates.io/crates/espflash) and NOT [`cargo espflash`](https://crates.io/crates/cargo-espflash), even though both can be installed via Cargo. `cargo espflash` is essentially `espflash` but it also builds the project prior to attempting to flash the resulting ELF binary.
 
-## Faster flashing
+## Alternative flashing
 
 - You can also flash with the [esptool.py](https://github.com/espressif/esptool) utility which is part of the Espressif toolset
 - Use the instructions below **only** if you have flashed successfully with `espflash` at least once, or else you might not have a valid bootloader and partition table!
 - The instructions below only (re)flash the application image, as the (one and only) factory image starting from 0x10000 in the partition table!
-- Install esptool: `pip install esptool`
-- (After each cargo build) Convert the elf image to binary: `esptool.py --chip esp32 elf2image target/xtensa-esp32-espidf/debug/rust-esp32-std-hello`
-- (After each cargo build) Flash the resulting binary: `esptool.py --chip esp32 -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x10000 target/xtensa-esp32-espidf/debug/rust-esp32-std-hello.bin`
-
-## Flashing for ESP32-S2 & ESP32-C3
-
-`espflash` currently supports only ESP32. For ESP32-S2 and ESP32-C3 you have to use the alternative flashing method from above, passing as argument `--chip esp32s2` or `--chip esp32c3` respectively
-
-**NOTE / ESP32-C3**: Be EXTRA careful when picking the flash address when flashing on ESP32-C3:
-* These boards seem to have non-standard partition tables in that the factory image does NOT necessarily start at address 0x10000 (if there is a factory image configured at all)!
-* The partition table is usually printed during chip boot time
-
-Here are two sample partition tables:
-
-**ESP32-C3-DevKitM-1**
-```
-## Label            Usage          Type ST Offset   Length
- 0 sec_cert         unknown          3f 00 0000d000 00003000
- 1 nvs              WiFi data        01 02 00010000 00006000
- 2 otadata          OTA data         01 00 00016000 00002000
- 3 phy_init         RF data          01 01 00018000 00001000
- 4 ota_0            OTA app          00 10 00020000 00190000 <- Flashing, Option 1: 0x20000, 1.6MB size
- 5 ota_1            OTA app          00 11 001b0000 00190000 <- Flashing, Option 2: 0x1b0000, 1.6MB size
- 6 fctry            WiFi data        01 02 00340000 00006000
- 7 coredump         Unknown data     01 03 00350000 00010000
-```
-
-**NodeMCU ESP32-C3M-Kit**
-```
-## Label            Usage          Type ST Offset   Length
- 0 phy_init         RF data          01 01 0000f000 00001000
- 1 otadata          OTA data         01 00 00010000 00002000
- 2 nvs              WiFi data        01 02 00012000 0000e000
- 3 at_customize     unknown          40 00 00020000 000e0000
- 4 ota_0            OTA app          00 10 00100000 00180000 <- Flashing, Option 1: 0x100000, 1.57MB size
- 5 ota_1            OTA app          00 11 00280000 00180000 <- Flashing, Option 2: 0x280000, 1.57MB size
-```
+- Install esptool using PYthon: `pip install esptool`
+- (After each cargo build) Convert the elf image to binary: `esptool.py --chip [esp32|esp32s2|esp32c3] elf2image target/xtensa-esp32-espidf/debug/rust-esp32-std-hello`
+- (After each cargo build) Flash the resulting binary: `esptool.py --chip [esp32|esp32s2|esp32c3] -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x10000 target/xtensa-esp32-espidf/debug/rust-esp32-std-hello.bin`
 
 ## Monitor
 
 - Once flashed, the board can be connected with any suitable serial monitor, e.g.:
-  - **NEW**: Cargo PIO (this one **decodes stack traces**!): `cargo pio espidf monitor /dev/ttyUSB0`
-    - To use it, issue `cargo install cargo-pio` first
+  - Cargo PIO (this one **decodes stack traces**!): `cargo pio espidf monitor /dev/ttyUSB0` (you need to `cargo install cargo-pio` first)
     - Please run it from within the `rust-esp32-std-hello` project directory, or else the built ELF file will not be detected, and the stack traces will not be decoded!
   - Built-in Linux/MacOS screen: `screen /dev/ttyUSB0 115200` (use `Ctrl+A` and then type `:quit` to stop it)
+  - ESPMonitor: `espmonitor --speed 115200 /dev/ttyUSB0` (you need to `cargo install espmonitor` first)
   - Miniterm: `miniterm --raw /dev/ttyUSB0 115200`
-  - ESPMonitor: `cargo espmonitor --speed 115200 /dev/ttyUSB0` (you need to `cargo install espmonitor` first)
 
 - You should see more or less the following:
 ```
