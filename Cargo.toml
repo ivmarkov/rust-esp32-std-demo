@@ -20,7 +20,6 @@ polling = { git = "https://github.com/ivmarkov/polling" }
 socket2 = { git = "https://github.com/ivmarkov/socket2" }
 getrandom = { version = "0.2", git = "https://github.com/ivmarkov/getrandom.git" }
 getrandom1 = { version = "0.1", git = "https://github.com/ivmarkov/getrandom.git", package = "getrandom", branch = "0.1" }
-esp-idf-svc = { path = "../esp-idf-svc" }
 
 [profile.release]
 # symbols are nice and they don't increase the size on Flash
@@ -40,7 +39,7 @@ native = ["esp-idf-sys/native"]
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
 url = "2"
-esp-idf-sys = "0.20"
+esp-idf-sys = "0.20.1"
 embedded-svc = "0.11"
 esp-idf-svc = { version = "0.25", features = ["binstart"] }
 esp-idf-hal = "0.20"
