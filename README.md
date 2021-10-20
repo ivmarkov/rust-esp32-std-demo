@@ -7,7 +7,7 @@ Highlights:
 - **Pure Rust and pure Cargo build!** No CMake, no PlatformIO, no C helpers
   - ... via [esp-idf-sys](https://crates.io/crates/esp-idf-sys) and [embuild](https://crates.io/crates/embuild)
 - **Support for Rust STD** (threads, console, TCP/IP) safe APIs
-  - ... implemented directly in the [Rust Espressif compiler fork](https://github.com/esp-rs/rust)
+  - ... upstreamed and [part of the Rust STD library](https://github.com/rust-lang/rust/pull/87666)
 - **New, experimental!** Support for asynchronous networking using [smol](https://github.com/smol-rs/smol)
 - **New, experimental!** Support for running in the [Espressif fork of QEMU](https://github.com/espressif/qemu/wiki)
 - Rust Safe APIs for various ESP-IDF services like WiFi, Ping, Httpd and logging
@@ -20,8 +20,9 @@ Highlights:
 ## Build
 
 - Install the [Rust Espressif compiler fork and the Espressif LLVM Clang fork](https://github.com/esp-rs/rust) using either pre-built binaries or follow the directions to build your own;
+  - This is necessary, because support for the Xtensa architecture (ESP32 / ESP32-S2 / ESP32-S3) is not upstreamed in LLVM yet
 - Switch to the `esp` toolchain from the pre-built binaries: `rustup default esp`
-  - **NOTE** For ESP32-C3, you can just use the stock nightly Rust compiler, and a recent, stock Clang (as in Clang 11+)
+  - **NOTE** For ESP32-C3 - which runs a RiscV32 chip - you can just use the stock nightly Rust compiler, and a recent, stock Clang (as in Clang 11+)
   - (You can do this by issuing `rustup install nightly` and then `rustup default nightly` instead of installing/building the Rust & Clang ESP forks and switching to their `esp` toolchain as advised above)
 - If using the custom Espressif Clang, make sure that you DON'T have a system Clang installed as well, because even if you have the Espressif one first on your `$PATH`, Bindgen will still pick the system one
   - A workaround that does not require uninstalling the system Clang is to do `export LIBCLANG_PATH=<path to the Espressif Clang lib directory>` prior to continuing the build process
