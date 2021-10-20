@@ -8,7 +8,8 @@ Highlights:
   - ... via [esp-idf-sys](https://crates.io/crates/esp-idf-sys) and [embuild](https://crates.io/crates/embuild)
 - **Support for Rust STD** (threads, console, TCP/IP) safe APIs
   - ... implemented directly in the [Rust Espressif compiler fork](https://github.com/esp-rs/rust)
-- **New, experiemental!** Support for asynchronous networking using [smol](https://github.com/smol-rs/smol).
+- **New, experimental!** Support for asynchronous networking using [smol](https://github.com/smol-rs/smol)
+- **New, experimental!** Support for running in the [Espressif fork of QEMU](https://github.com/espressif/qemu/wiki)
 - Rust Safe APIs for various ESP-IDF services like WiFi, Ping, Httpd and logging
   - ... via [esp-idf-svc](https://crates.io/crates/esp-idf-svc) ([embedded-svc](https://crates.io/crates/embedded-svc) abstractions implemented on top of ESP-IDF)
 - NAPT support (Router from the SoftAP to the STA interface). **NOTE**: In production, do NOT leave the SoftAP interface open (without password)!
@@ -24,7 +25,7 @@ Highlights:
   - (You can do this by issuing `rustup install nightly` and then `rustup default nightly` instead of installing/building the Rust & Clang ESP forks and switching to their `esp` toolchain as advised above)
 - If using the custom Espressif Clang, make sure that you DON'T have a system Clang installed as well, because even if you have the Espressif one first on your `$PATH`, Bindgen will still pick the system one
   - A workaround that does not require uninstalling the system Clang is to do `export LIBCLANG_PATH=<path to the Espressif Clang lib directory>` prior to continuing the build process
-- The build is using the `ldproxy` linker wrapper from `embuild`, so install [ldproxy](https://crates.io/crates/embuild/ldproxy):
+- The build is using the `ldproxy` linker wrapper from [embuild](https://crates.io/crates/embuild), so install [ldproxy](https://crates.io/crates/embuild/ldproxy):
   - `cargo install ldproxy`
 - Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
 - Enter it: `cd rust-esp32-std-hello`
@@ -37,6 +38,14 @@ Highlights:
 - Build: `cargo build` or `cargo build --release`
 - If you would like to see the async networking in action, use the following build command instead:
   - `export ESP_IDF_VERSION=master; cargo build --features native,bind`
+
+## QEMU (WIP, experimental)
+- Rather than flashing on the chip, you can now run the demo in QEMU:
+  - Clone and then build [the Espressif fork of QEMU](https://github.com/espressif/qemu) by following the [build instructions](https://github.com/espressif/qemu/wiki)
+  - Install the [esptool.py](https://github.com/espressif/esptool) utility
+  - Build the app with `export ESP_IDF_VERSION=master; cargo build --features native,qemu`
+  - NOTE: Only ESP32 is supported for the moment, so make sure that the `xtensa-esp32-espidf` target (the default one) is active in your `.cargo/config.toml` file
+  - Run it in QEMU by typing `./qemu.sh`. NOTE: You might have to change the `ESP_QEMU_PATH` in that script to point to the `build` subdirectory of your QEMU Espressif clone
 
 ## Flash
 
