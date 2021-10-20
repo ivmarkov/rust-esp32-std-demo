@@ -15,12 +15,16 @@ use url;
 use smol;
 
 use embedded_svc::anyerror::*;
+use embedded_svc::eth;
+use embedded_svc::eth::Eth;
 use embedded_svc::httpd::registry::*;
 use embedded_svc::httpd::*;
 use embedded_svc::io;
+use embedded_svc::ipv4;
 use embedded_svc::ping::Ping;
 use embedded_svc::wifi::*;
 
+use esp_idf_svc::eth::*;
 use esp_idf_svc::httpd as idf;
 use esp_idf_svc::httpd::ServerRegistry;
 use esp_idf_svc::netif::*;
@@ -52,7 +56,9 @@ use ssd1306;
 use ssd1306::mode::DisplayConfig;
 use st7789;
 
+#[allow(dead_code)]
 const SSID: &str = "ssid";
+#[allow(dead_code)]
 const PASS: &str = "pass";
 
 #[cfg(esp32s2)]
@@ -89,8 +95,12 @@ fn main() -> Result<()> {
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
     // heltec_hello_world()?;
 
+    #[cfg(not(feature = "qemu"))]
     #[allow(unused_mut)]
     let mut wifi = wifi()?;
+
+    #[cfg(feature = "qemu")]
+    let eth = eth_qemu()?;
 
     test_tcp()?;
 
@@ -103,8 +113,9 @@ fn main() -> Result<()> {
     #[cfg(feature = "experimental")]
     test_https_client()?;
 
+    #[cfg(not(feature = "qemu"))]
     #[cfg(esp_idf_config_lwip_ipv4_napt)]
-    test_napt(&mut wifi)?;
+    enable_napt(&mut wifi)?;
 
     let mutex = Arc::new((Mutex::new(None), Condvar::new()));
 
@@ -129,8 +140,17 @@ fn main() -> Result<()> {
     drop(httpd);
     info!("Httpd stopped");
 
-    drop(wifi);
-    info!("Wifi stopped");
+    #[cfg(not(feature = "qemu"))]
+    {
+        drop(wifi);
+        info!("Wifi stopped");
+    }
+
+    #[cfg(feature = "qemu")]
+    {
+        let _hw = eth.release()?;
+        info!("Eth stopped");
+    }
 
     #[cfg(esp32s2)]
     start_ulp(cycles)?;
@@ -651,6 +671,7 @@ fn start_ulp(cycles: u32) -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(feature = "qemu"))]
 fn wifi() -> Result<Box<EspWifi>> {
     let mut wifi = Box::new(EspWifi::new(
         Arc::new(EspNetifStack::new()?),
@@ -701,20 +722,9 @@ fn wifi() -> Result<Box<EspWifi>> {
         ApStatus::Started(ApIpStatus::Done),
     ) = status
     {
-        info!("Wifi connected, about to do some pings");
+        info!("Wifi connected");
 
-        //info!("{:#}", std::backtrace::Backtrace::capture());
-
-        let ping_summary =
-            ping::EspPing::default().ping(ip_settings.subnet.gateway, &Default::default())?;
-        if ping_summary.transmitted != ping_summary.received {
-            bail!(
-                "Pinging gateway {} resulted in timeouts",
-                ip_settings.subnet.gateway
-            );
-        }
-
-        info!("Pinging done");
+        ping(&ip_settings)?;
     } else {
         bail!("Unexpected Wifi status: {:?}", status);
     }
@@ -722,8 +732,55 @@ fn wifi() -> Result<Box<EspWifi>> {
     Ok(wifi)
 }
 
+#[cfg(feature = "qemu")]
+fn eth_qemu() -> Result<Box<EspEth<()>>> {
+    let mut eth = Box::new(EspEth::new_openeth(
+        Arc::new(EspNetifStack::new()?),
+        Arc::new(EspSysLoopStack::new()?),
+    )?);
+
+    info!("Eth created");
+
+    eth.set_configuration(&eth::Configuration::Client(Default::default()))?;
+
+    info!("Eth configuration set, about to get status");
+
+    let status = eth.get_status();
+
+    if let eth::Status::Started(eth::ConnectionStatus::Connected(eth::IpStatus::Done(Some(
+        ip_settings,
+    )))) = status
+    {
+        info!("Eth connected");
+
+        ping(&ip_settings)?;
+    } else {
+        bail!("Unexpected Eth status: {:?}", status);
+    }
+
+    Ok(eth)
+}
+
+fn ping(ip_settings: &ipv4::ClientSettings) -> Result<()> {
+    info!("About to do some pings for {:?}", ip_settings);
+
+    let ping_summary =
+        ping::EspPing::default().ping(ip_settings.subnet.gateway, &Default::default())?;
+    if ping_summary.transmitted != ping_summary.received {
+        bail!(
+            "Pinging gateway {} resulted in timeouts",
+            ip_settings.subnet.gateway
+        );
+    }
+
+    info!("Pinging done");
+
+    Ok(())
+}
+
+#[cfg(not(feature = "qemu"))]
 #[cfg(esp_idf_config_lwip_ipv4_napt)]
-fn test_napt(wifi: &mut EspWifi) -> Result<()> {
+fn enable_napt(wifi: &mut EspWifi) -> Result<()> {
     wifi.with_router_netif_mut(|netif| netif.unwrap().enable_napt(true));
 
     info!("NAPT enabled on the WiFi SoftAP!");
