@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.18.10"
+version = "0.18.11"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -39,10 +39,10 @@ native = ["esp-idf-sys/native"]
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
 url = "2"
-esp-idf-sys = "0.20.1"
+esp-idf-sys = { version = "0.21", features = ["binstart"] }
 embedded-svc = "0.11"
-esp-idf-svc = { version = "0.25.1", features = ["binstart"] }
-esp-idf-hal = "0.20"
+esp-idf-svc = "0.26"
+esp-idf-hal = "0.21"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 display-interface = "0.4"

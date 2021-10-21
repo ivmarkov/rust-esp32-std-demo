@@ -78,6 +78,9 @@ fn main() -> Result<()> {
 
     test_threads();
 
+    // Bind the log crate to the ESP Logging facilities
+    esp_idf_svc::log::EspLogger::initialize_default();
+
     // Get backtraces from anyhow; only works for Xtensa arch currently
     #[cfg(arch = "xtensa")]
     env::set_var("RUST_BACKTRACE", "1");
