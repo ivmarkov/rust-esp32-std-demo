@@ -94,6 +94,10 @@ fn main() -> Result<()> {
     // #[cfg(esp32s2)]
     // kaluga_hello_world(true)?;
 
+    // ... or uncomment this if you have a ESP32-S3-OTG-USB (including S2) board
+    // #[cfg(esp32s2)]
+    // esp32s3_usb_otg_hello_world()?;
+
     // ... or uncomment this if you have a Heltec LoRa 32 board
     // For other boards, you might have to use a different embedded-graphics driver and pin configuration
     // heltec_hello_world()?;
@@ -482,6 +486,49 @@ fn kaluga_hello_world(ili9341: bool) -> Result<()> {
             led_draw(&mut display)
         })
     }
+}
+
+#[allow(dead_code)]
+#[cfg(esp32s2)]
+fn esp32s3_usb_otg_hello_world() -> Result<()> {
+    info!(
+        "About to initialize the ESP32-S3-USB-OTG SPI LED driver ST7789VW"
+    );
+
+    let peripherals = Peripherals::take().unwrap();
+    let pins = peripherals.pins;
+
+    let config = <spi::config::Config as Default>::default()
+        .baudrate(80.MHz().into())
+        .bit_order(spi::config::BitOrder::MSBFirst);
+
+    let mut backlight = pins.gpio9.into_output()?;
+    backlight.set_high()?;
+
+    let di = SPIInterfaceNoCS::new(
+        spi::Master::<spi::SPI3, _, _, _, _>::new(
+            peripherals.spi3,
+            spi::Pins {
+                sclk: pins.gpio6,
+                sdo: pins.gpio7,
+                sdi: Option::<gpio::Gpio21<gpio::Unknown>>::None,
+                cs: Some(pins.gpio5),
+            },
+            config,
+        )?,
+        pins.gpio4.into_output()?,
+    );
+
+    let reset = pins.gpio8.into_output()?;
+
+    let mut display = st7789::ST7789::new(di, reset, 240, 240);
+
+    AnyError::<st7789::Error<_>>::wrap(|| {
+        display.init(&mut delay::Ets)?;
+        display.set_orientation(st7789::Orientation::Landscape)?;
+
+        led_draw(&mut display)
+    })
 }
 
 #[allow(dead_code)]
