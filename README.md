@@ -1,6 +1,6 @@
 # Rust on ESP32 "Hello, World" app
 
-A demo binary crate for the ESP32[XX] and ESP-IDF, which connects to WiFi, drives a small HTTP server and draws on a LED screen.
+A demo binary crate for the ESP32[XX] and ESP-IDF, which connects to WiFi, Ethernet, drives a small HTTP server and draws on a LED screen.
 
 Highlights:
 
@@ -30,22 +30,26 @@ Highlights:
   - `cargo install ldproxy`
 - Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
 - Enter it: `cd rust-esp32-std-hello`
-- Change **lines 50 and 51** in `rust-esp32-std-hello/src/main.rs` to contain the SSID & password of your wireless network
-- To configure the demo for your particular board, please uncomment the relevant [Rust target for your board](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L5) and comment the others
-- (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Uncomment **line 51** to be greeted with a `Hello Rust!` message on the board's LED screen
-- (Only if you happen to have an [ESP32-S2-Kaluga-1 board](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit.html)): Uncomment **line 55** to be greeted with a `Hello Rust!` message on the board's LED screen
-- (Only if you happen to have a [Heltec LoRa 32 board](https://heltec.org/project/wifi-lora-32/)): Uncomment **line 59** to be greeted with a `Hello Rust!` message on the board's LED screen
-- (Only if you happen to have an ESP32-S2 board and can connect a LED to GPIO Pin 04 and GND): Try accessing `http://<dhcp-ip-of-the-board>>/ulp`
+- Export two environment variables that would contain the SSID & password of your wireless network:
+  - `export RUST_ESP32_STD_HELLO_WIFI_SSID=<ssid>`
+  - `export RUST_ESP32_STD_HELLO_WIFI_PASS=<ssid>`
+- To configure the demo for your particular board, please uncomment the relevant [Rust target for your board](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L5) and comment the others. Alternatively, just append the `--target <target>` flag to all `cargo build` lines below.
 - Build: `cargo build` or `cargo build --release`
-- If you would like to see the async networking in action, use the following build command instead:
-  - `export ESP_IDF_VERSION=master; cargo build --features native,bind`
+  - If you would like to see the async networking in action, use the following build command instead: `export ESP_IDF_VERSION=master; cargo build --features native`
+  - (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Add `ttgo` to the `--features` build flags above (as in `cargo build --features ttgo`) to be greeted with a `Hello Rust!` message on the board's LED screen
+  - (Only if you happen to have an [ESP32-S2-Kaluga-1 board](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit.html)): Add `kaluga` to the `--features` build flags above (as in `cargo build --features kaluga`) to be greeted with a `Hello Rust!` message on the board's LED screen
+  - (Only if you happen to have a [Heltec LoRa 32 board](https://heltec.org/project/wifi-lora-32/)): Add `heltec` to the `--features` build flags above (as in `cargo build --features heltec`) to be greeted with a `Hello Rust!` message on the board's LED screen
+  - (Only if you happen to have an [ESP32-S3-USB-OTG](https://www.espressif.com/en/products/devkits)): Build with `native` and the ESP-IDF master branch and add `esp32s3_usb_otg` to the `--features` build flags above (as in `export ESP_IDF_VERSION=master; cargo build --features native,esp32s3_usb_otg`) to be greeted with a `Hello Rust!` message on the board's LED screen
+  - (Only if you happen to have an [Ethernet-to-SPI board based ob the W5500 chip](https://www.wiznet.io/product-item/w5500/)): Build with `native` and the ESP-IDF master branch and add `w5500` to the `--features` build flags above (as in `export ESP_IDF_VERSION=master; cargo build --features native,w5500`) to have Ethernet connectivity as part of the demo
+    - Note that other Ethernet-to-SPI boards might work just fine as well, but you'll have to change the chip from `SpiEthDriver::W5500` to whatever chip your SPI board is using, in the demo code itself.
+- (Only if you happen to have an ESP32-S2 board and can connect a LED to GPIO Pin 04 and GND): Try accessing `http://<dhcp-ip-of-the-board>>/ulp` once build is flashed on the MCU
 
 ## QEMU (WIP, experimental)
 - Rather than flashing on the chip, you can now run the demo in QEMU:
   - Clone and then build [the Espressif fork of QEMU](https://github.com/espressif/qemu) by following the [build instructions](https://github.com/espressif/qemu/wiki)
   - Install the [esptool.py](https://github.com/espressif/esptool) utility
   - Build the app with `export ESP_IDF_VERSION=master; cargo build --features native,qemu`
-  - NOTE: Only ESP32 is supported for the moment, so make sure that the `xtensa-esp32-espidf` target (the default one) is active in your `.cargo/config.toml` file
+  - NOTE: Only ESP32 is supported for the moment, so make sure that the `xtensa-esp32-espidf` target (the default one) is active in your `.cargo/config.toml` file (or override with `export ESP_IDF_VERSION=master; cargo build --features native,qemu --target xtensa-esp32-espidf`)
   - Run it in QEMU by typing `./qemu.sh`. NOTE: You might have to change the `ESP_QEMU_PATH` in that script to point to the `build` subdirectory of your QEMU Espressif clone
 
 ## Flash
@@ -55,7 +59,7 @@ Highlights:
 - Replace `dev/ttyUSB0` above with the USB port where you've connected the board
 - If espflash complains with `Error: IO error while using serial port: Operation timed out` or with error `Error: Failed to connect to the device`, just retry the flash operation
 
-**NOTE**: The above commands do use [`espflash`](https://crates.io/crates/espflash) and NOT [`cargo espflash`](https://crates.io/crates/cargo-espflash), even though both can be installed via Cargo. `cargo espflash` is essentially `espflash` but it also builds the project prior to attempting to flash the resulting ELF binary.
+**NOTE**: The above commands do use [`espflash`](https://crates.io/crates/espflash) and NOT [`cargo espflash`](https://crates.io/crates/cargo-espflash), even though both can be installed via Cargo. `cargo espflash` is essentially `espflash` but it has some extra superpowers, like the capability to build the project before flashing, or to generate an ESP32 .BIN file from the built .ELF image.
 
 ## Alternative flashing
 

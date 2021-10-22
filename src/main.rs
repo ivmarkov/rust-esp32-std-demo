@@ -2,6 +2,26 @@
 #![allow(clippy::single_component_path_imports)]
 //#![feature(backtrace)]
 
+#[cfg(all(feature = "qemu", not(esp32)))]
+compile_error!("The `qemu` feature can only be built for the `xtensa-esp32-espidf` target.");
+
+#[cfg(all(feature = "ip101", not(esp32)))]
+compile_error!("The `ip101` feature can only be built for the `xtensa-esp32-espidf` target.");
+
+#[cfg(all(feature = "kaluga", not(esp32s2)))]
+compile_error!("The `kaluga` feature can only be built for the `xtensa-esp32s2-espidf` target.");
+
+#[cfg(all(feature = "ttgo", not(esp32)))]
+compile_error!("The `ttgo` feature can only be built for the `xtensa-esp32-espidf` target.");
+
+#[cfg(all(feature = "heltec", not(esp32)))]
+compile_error!("The `heltec` feature can only be built for the `xtensa-esp32-espidf` target.");
+
+#[cfg(all(feature = "esp32s3_usb_otg", not(esp32s3)))]
+compile_error!(
+    "The `esp32s3_usb_otg` feature can only be built for the `xtensa-esp32s3-espidf` target."
+);
+
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Condvar, Mutex};
@@ -57,9 +77,11 @@ use ssd1306::mode::DisplayConfig;
 use st7789;
 
 #[allow(dead_code)]
-const SSID: &str = "ssid";
+#[cfg(not(feature = "qemu"))]
+const SSID: &str = env!("RUST_ESP32_STD_HELLO_WIFI_SSID");
 #[allow(dead_code)]
-const PASS: &str = "pass";
+#[cfg(not(feature = "qemu"))]
+const PASS: &str = env!("RUST_ESP32_STD_HELLO_WIFI_PASS");
 
 #[cfg(esp32s2)]
 include!(env!("EMBUILD_GENERATED_SYMBOLS_FILE"));
@@ -85,32 +107,115 @@ fn main() -> Result<()> {
     #[cfg(arch = "xtensa")]
     env::set_var("RUST_BACKTRACE", "1");
 
-    // Uncomment this if you have a TTGO ESP32 board
-    // For other boards, you might have to use a different embedded-graphics driver and pin configuration
-    // ttgo_hello_world()?;
+    #[allow(unused)]
+    let peripherals = Peripherals::take().unwrap();
+    #[allow(unused)]
+    let pins = peripherals.pins;
 
-    // ... or uncomment this if you have a Kaluga-1 ESP32-S2 board
-    // For other boards, you might have to use a different embedded-graphics driver and pin configuration
-    // #[cfg(esp32s2)]
-    // kaluga_hello_world(true)?;
+    #[allow(unused)]
+    let netif_stack = Arc::new(EspNetifStack::new()?);
+    #[allow(unused)]
+    let sys_loop_stack = Arc::new(EspSysLoopStack::new()?);
+    #[allow(unused)]
+    let default_nvs = Arc::new(EspDefaultNvs::new()?);
 
-    // ... or uncomment this if you have a Heltec LoRa 32 board
-    // For other boards, you might have to use a different embedded-graphics driver and pin configuration
-    // heltec_hello_world()?;
+    #[cfg(feature = "ttgo")]
+    ttgo_hello_world(
+        pins.gpio4,
+        pins.gpio16,
+        pins.gpio23,
+        peripherals.spi2,
+        pins.gpio18,
+        pins.gpio19,
+        pins.gpio5,
+    )?;
+
+    #[cfg(feature = "kaluga")]
+    kaluga_hello_world(
+        pins.gpio6,
+        pins.gpio13,
+        pins.gpio16,
+        peripherals.spi3,
+        pins.gpio15,
+        pins.gpio9,
+        pins.gpio11,
+        true,
+    )?;
+
+    #[cfg(feature = "heltec")]
+    heltec_hello_world(pins.gpio16, peripherals.i2c0, pins.gpio4, pins.gpio15)?;
+
+    #[cfg(feature = "esp32s3_usb_otg")]
+    esp32s3_usb_otg_hello_world(
+        pins.gpio9,
+        pins.gpio4,
+        pins.gpio8,
+        peripherals.spi3,
+        pins.gpio6,
+        pins.gpio7,
+        pins.gpio5,
+    )?;
 
     #[cfg(not(feature = "qemu"))]
     #[allow(unused_mut)]
-    let mut wifi = wifi()?;
+    let mut wifi = wifi(
+        netif_stack.clone(),
+        sys_loop_stack.clone(),
+        default_nvs.clone(),
+    )?;
 
     #[cfg(feature = "qemu")]
-    let eth = eth_qemu()?;
+    let eth = eth_configure(Box::new(EspEth::new_openeth(
+        netif_stack.clone(),
+        sys_loop_stack.clone(),
+    )?))?;
+
+    #[cfg(feature = "ip101")]
+    let eth = eth_configure(Box::new(EspEth::new_rmii(
+        netif_stack.clone(),
+        sys_loop_stack.clone(),
+        RmiiEthPeripherals {
+            rmii_rdx0: pins.gpio25,
+            rmii_rdx1: pins.gpio26,
+            rmii_crs_dv: pins.gpio27,
+            rmii_mdc: pins.gpio12,
+            rmii_txd1: pins.gpio22,
+            rmii_tx_en: pins.gpio21,
+            rmii_txd0: pins.gpio19,
+            rmii_mdio: pins.gpio13,
+            rmii_ref_clk: pins.gpio0,
+            rst: Some(pins.gpio14),
+        },
+        RmiiEthChipset::IP101,
+        None,
+    )?))?;
+
+    #[cfg(feature = "w5500")]
+    let eth = eth_configure(Box::new(EspEth::new_spi(
+        netif_stack.clone(),
+        sys_loop_stack.clone(),
+        SpiEthPeripherals {
+            int_pin: pins.gpio13,
+            rst_pin: Some(pins.gpio25),
+            spi_pins: spi::Pins {
+                sclk: pins.gpio12,
+                sdo: pins.gpio26,
+                sdi: Some(pins.gpio27),
+                cs: Some(pins.gpio14),
+            },
+            spi: peripherals.spi2,
+        },
+        SpiEthChipset::W5500,
+        20.MHz().into(),
+        Some(&[0x02, 0x00, 0x00, 0x12, 0x34, 0x56]),
+        None,
+    )?))?;
 
     test_tcp()?;
 
-    #[cfg(feature = "bind")]
     test_tcp_bind()?;
 
-    #[cfg(all(feature = "bind", esp_idf_version = "4.4"))]
+    #[cfg(esp_idf_version = "4.4")]
     test_tcp_bind_async()?;
 
     #[cfg(feature = "experimental")]
@@ -149,9 +254,9 @@ fn main() -> Result<()> {
         info!("Wifi stopped");
     }
 
-    #[cfg(feature = "qemu")]
+    #[cfg(any(feature = "qemu", feature = "w5500", feature = "ip101"))]
     {
-        let _hw = eth.release()?;
+        let _eth_peripherals = eth.release()?;
         info!("Eth stopped");
     }
 
@@ -263,7 +368,6 @@ fn test_tcp() -> Result<()> {
     Ok(())
 }
 
-#[cfg(feature = "bind")]
 fn test_tcp_bind() -> Result<()> {
     fn test_tcp_bind_accept() -> Result<()> {
         info!("About to bind a simple echo service to port 8080");
@@ -299,7 +403,7 @@ fn test_tcp_bind() -> Result<()> {
                         // connection was closed
                         break;
                     }
-                    stream.write(&read[0..n]).unwrap();
+                    stream.write_all(&read[0..n]).unwrap();
                 }
                 Err(err) => {
                     panic!("{}", err);
@@ -313,7 +417,7 @@ fn test_tcp_bind() -> Result<()> {
     Ok(())
 }
 
-#[cfg(all(feature = "bind", esp_idf_version = "4.4"))]
+#[cfg(esp_idf_version = "4.4")]
 fn test_tcp_bind_async() -> anyhow::Result<()> {
     async fn test_tcp_bind() -> smol::io::Result<()> {
         /// Echoes messages from the client back to it.
@@ -377,38 +481,42 @@ fn test_https_client() -> Result<()> {
     Ok(())
 }
 
-#[allow(dead_code)]
-#[cfg(esp32)]
-fn ttgo_hello_world() -> Result<()> {
+#[cfg(feature = "ttgo")]
+fn ttgo_hello_world(
+    backlight: gpio::Gpio4<gpio::Unknown>,
+    dc: gpio::Gpio16<gpio::Unknown>,
+    rst: gpio::Gpio23<gpio::Unknown>,
+    spi: spi::SPI2,
+    sclk: gpio::Gpio18<gpio::Unknown>,
+    sdo: gpio::Gpio19<gpio::Unknown>,
+    cs: gpio::Gpio5<gpio::Unknown>,
+) -> Result<()> {
     info!("About to initialize the TTGO ST7789 LED driver");
-
-    let peripherals = Peripherals::take().unwrap();
-    let pins = peripherals.pins;
 
     let config = <spi::config::Config as Default>::default()
         .baudrate(26.MHz().into())
         .bit_order(spi::config::BitOrder::MSBFirst);
 
-    let mut backlight = pins.gpio4.into_output()?;
+    let mut backlight = backlight.into_output()?;
     backlight.set_high()?;
 
     let di = SPIInterfaceNoCS::new(
         spi::Master::<spi::SPI2, _, _, _, _>::new(
-            peripherals.spi2,
+            spi,
             spi::Pins {
-                sclk: pins.gpio18,
-                sdo: pins.gpio19,
+                sclk,
+                sdo,
                 sdi: Option::<gpio::Gpio21<gpio::Unknown>>::None,
-                cs: Some(pins.gpio5),
+                cs: Some(cs),
             },
             config,
         )?,
-        pins.gpio16.into_output()?,
+        dc.into_output()?,
     );
 
     let mut display = st7789::ST7789::new(
         di,
-        pins.gpio23.into_output()?,
+        rst.into_output()?,
         // SP7789V is designed to drive 240x320 screens, even though the TTGO physical screen is smaller
         240,
         320,
@@ -426,39 +534,44 @@ fn ttgo_hello_world() -> Result<()> {
     })
 }
 
-#[allow(dead_code)]
-#[cfg(esp32s2)]
-fn kaluga_hello_world(ili9341: bool) -> Result<()> {
+#[cfg(feature = "kaluga")]
+fn kaluga_hello_world(
+    backlight: gpio::Gpio6<gpio::Unknown>,
+    dc: gpio::Gpio13<gpio::Unknown>,
+    rst: gpio::Gpio16<gpio::Unknown>,
+    spi: spi::SPI3,
+    sclk: gpio::Gpio15<gpio::Unknown>,
+    sdo: gpio::Gpio9<gpio::Unknown>,
+    cs: gpio::Gpio11<gpio::Unknown>,
+    ili9341: bool,
+) -> Result<()> {
     info!(
         "About to initialize the Kaluga {} SPI LED driver",
         if ili9341 { "ILI9341" } else { "ST7789" }
     );
 
-    let peripherals = Peripherals::take().unwrap();
-    let pins = peripherals.pins;
-
     let config = <spi::config::Config as Default>::default()
         .baudrate((if ili9341 { 40 } else { 80 }).MHz().into())
         .bit_order(spi::config::BitOrder::MSBFirst);
 
-    let mut backlight = pins.gpio6.into_output()?;
+    let mut backlight = backlight.into_output()?;
     backlight.set_high()?;
 
     let di = SPIInterfaceNoCS::new(
         spi::Master::<spi::SPI3, _, _, _, _>::new(
-            peripherals.spi3,
+            spi,
             spi::Pins {
-                sclk: pins.gpio15,
-                sdo: pins.gpio9,
+                sclk,
+                sdo,
                 sdi: Option::<gpio::Gpio21<gpio::Unknown>>::None,
-                cs: Some(pins.gpio11),
+                cs: Some(cs),
             },
             config,
         )?,
-        pins.gpio13.into_output()?,
+        dc.into_output()?,
     );
 
-    let reset = pins.gpio16.into_output()?;
+    let reset = rst.into_output()?;
 
     if ili9341 {
         AnyError::<ili9341::DisplayError>::wrap(|| {
@@ -484,27 +597,25 @@ fn kaluga_hello_world(ili9341: bool) -> Result<()> {
     }
 }
 
-#[allow(dead_code)]
-#[cfg(esp32)]
-fn heltec_hello_world() -> Result<()> {
+#[cfg(feature = "heltec")]
+fn heltec_hello_world(
+    rst: gpio::Gpio16<gpio::Unknown>,
+    i2c: i2c::I2C0,
+    sda: gpio::Gpio4<gpio::Unknown>,
+    scl: gpio::Gpio15<gpio::Unknown>,
+) -> Result<()> {
     info!("About to initialize the Heltec SSD1306 I2C LED driver");
-
-    let peripherals = Peripherals::take().unwrap();
-    let pins = peripherals.pins;
 
     let config = <i2c::config::MasterConfig as Default>::default().baudrate(400.kHz().into());
 
     let di = ssd1306::I2CDisplayInterface::new(i2c::Master::<i2c::I2C0, _, _>::new(
-        peripherals.i2c0,
-        i2c::Pins {
-            sda: pins.gpio4,
-            scl: pins.gpio15,
-        },
+        i2c,
+        i2c::Pins { sda, scl },
         config,
     )?);
 
     let mut delay = delay::Ets;
-    let mut reset = pins.gpio16.into_output()?;
+    let mut reset = rst.into_output()?;
 
     reset.set_high()?;
     delay.delay_ms(1 as u32);
@@ -529,6 +640,54 @@ fn heltec_hello_world() -> Result<()> {
         led_draw(&mut *display)?;
 
         display.flush()
+    })
+}
+
+#[cfg(feature = "esp32s3_usb_otg")]
+fn esp32s3_usb_otg_hello_world(
+    backlight: gpio::Gpio9<gpio::Unknown>,
+    dc: gpio::Gpio4<gpio::Unknown>,
+    rst: gpio::Gpio8<gpio::Unknown>,
+    spi: spi::SPI3,
+    sclk: gpio::Gpio6<gpio::Unknown>,
+    sdo: gpio::Gpio7<gpio::Unknown>,
+    cs: gpio::Gpio5<gpio::Unknown>,
+) -> Result<()> {
+    info!("About to initialize the ESP32-S3-USB-OTG SPI LED driver ST7789VW");
+
+    let peripherals = Peripherals::take().unwrap();
+    let pins = peripherals.pins;
+
+    let config = <spi::config::Config as Default>::default()
+        .baudrate(80.MHz().into())
+        .bit_order(spi::config::BitOrder::MSBFirst);
+
+    let mut backlight = backlight.into_output()?;
+    backlight.set_high()?;
+
+    let di = SPIInterfaceNoCS::new(
+        spi::Master::<spi::SPI3, _, _, _, _>::new(
+            spi,
+            spi::Pins {
+                sclk,
+                sdo,
+                sdi: Option::<gpio::Gpio21<gpio::Unknown>>::None,
+                cs: Some(cs),
+            },
+            config,
+        )?,
+        dc.into_output()?,
+    );
+
+    let reset = rst.into_output()?;
+
+    let mut display = st7789::ST7789::new(di, reset, 240, 240);
+
+    AnyError::<st7789::Error<_>>::wrap(|| {
+        display.init(&mut delay::Ets)?;
+        display.set_orientation(st7789::Orientation::Landscape)?;
+
+        led_draw(&mut display)
     })
 }
 
@@ -675,12 +834,13 @@ fn start_ulp(cycles: u32) -> Result<()> {
 }
 
 #[cfg(not(feature = "qemu"))]
-fn wifi() -> Result<Box<EspWifi>> {
-    let mut wifi = Box::new(EspWifi::new(
-        Arc::new(EspNetifStack::new()?),
-        Arc::new(EspSysLoopStack::new()?),
-        Arc::new(EspDefaultNvs::new()?),
-    )?);
+#[allow(dead_code)]
+fn wifi(
+    netif_stack: Arc<EspNetifStack>,
+    sys_loop_stack: Arc<EspSysLoopStack>,
+    default_nvs: Arc<EspDefaultNvs>,
+) -> Result<Box<EspWifi>> {
+    let mut wifi = Box::new(EspWifi::new(netif_stack, sys_loop_stack, default_nvs)?);
 
     info!("Wifi created, about to scan");
 
@@ -735,13 +895,8 @@ fn wifi() -> Result<Box<EspWifi>> {
     Ok(wifi)
 }
 
-#[cfg(feature = "qemu")]
-fn eth_qemu() -> Result<Box<EspEth<()>>> {
-    let mut eth = Box::new(EspEth::new_openeth(
-        Arc::new(EspNetifStack::new()?),
-        Arc::new(EspSysLoopStack::new()?),
-    )?);
-
+#[cfg(any(feature = "qemu", feature = "w5500", feature = "ip101"))]
+fn eth_configure<HW>(mut eth: Box<EspEth<HW>>) -> Result<Box<EspEth<HW>>> {
     info!("Eth created");
 
     eth.set_configuration(&eth::Configuration::Client(Default::default()))?;

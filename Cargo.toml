@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-hello"
-version = "0.18.11"
+version = "0.19.0"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -30,10 +30,30 @@ opt-level = "z"
 opt-level = "s"
 
 [features]
-bind = []
-qemu = []
-experimental = ["esp-idf-svc/experimental", "embedded-svc/experimental"]
+# Enable this feature for the build to use ESP-IDF native tooling instead of PlatformIO under the hood
 native = ["esp-idf-sys/native"]
+
+# Enable this feature if you are building for QEMU
+qemu = []
+
+# Enable this feature in case you have a Kaluga board and would like to see a LED screen demo
+kaluga = []
+
+# Enable this feature in case you have a TTGO board and would like to see a LED screen demo
+ttgo = []
+
+# Enable this feature in case you have an ESP32S3-USB-OTG board and would like to see a LED screen demo
+heltec = []
+
+esp32s3_usb_otg = []
+
+# Enable this feature in case you have an RMII IP101 Ethernet adapter
+ip101 = []
+
+# Enable this feature in case you have an SPI W5500 Ethernet adapter
+w5500 = []
+
+experimental = ["esp-idf-svc/experimental", "embedded-svc/experimental"]
 
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
@@ -41,7 +61,7 @@ log = "0.4"
 url = "2"
 esp-idf-sys = { version = "0.21", features = ["binstart"] }
 embedded-svc = "0.11"
-esp-idf-svc = "0.26"
+esp-idf-svc = "0.27"
 esp-idf-hal = "0.21"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
