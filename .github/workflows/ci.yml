@@ -29,6 +29,6 @@ jobs:
       - name: Build | Fmt Check
         run: cargo fmt -- --check
       - name: Build | Clippy
-        run: export RUST_ESP32_STD_HELLO_WIFI_SSID=ssid; export RUST_ESP32_STD_HELLO_WIFI_PASS=pass; cargo clippy --no-deps --target riscv32imc-esp-espidf
+        run: export RUST_ESP32_STD_DEMO_WIFI_SSID=ssid; export RUST_ESP32_STD_DEMO_WIFI_PASS=pass; cargo clippy --no-deps --target riscv32imc-esp-espidf
       - name: Build | Compile
-        run: export RUST_ESP32_STD_HELLO_WIFI_SSID=ssid; export RUST_ESP32_STD_HELLO_WIFI_PASS=pass; cargo build --target riscv32imc-esp-espidf
+        run: export RUST_ESP32_STD_DEMO_WIFI_SSID=ssid; export RUST_ESP32_STD_DEMO_WIFI_PASS=pass; cargo build --target riscv32imc-esp-espidf
