@@ -28,9 +28,7 @@ jobs:
         run: cargo install ldproxy
       - name: Build | Fmt Check
         run: cargo fmt -- --check
-      - name: Build | Export vars
-        run: export RUST_ESP32_STD_HELLO_WIFI_SSID=ssid; export RUST_ESP32_STD_HELLO_WIFI_PASS=pass
       - name: Build | Clippy
-        run: cargo clippy --no-deps --target riscv32imc-esp-espidf
+        run: export RUST_ESP32_STD_HELLO_WIFI_SSID=ssid; export RUST_ESP32_STD_HELLO_WIFI_PASS=pass; cargo clippy --no-deps --target riscv32imc-esp-espidf
       - name: Build | Compile
-        run: cargo build --target riscv32imc-esp-espidf
+        run: export RUST_ESP32_STD_HELLO_WIFI_SSID=ssid; export RUST_ESP32_STD_HELLO_WIFI_PASS=pass; cargo build --target riscv32imc-esp-espidf
