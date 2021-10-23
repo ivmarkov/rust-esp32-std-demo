@@ -1,6 +1,6 @@
-# Rust on ESP32 demo app
+# Rust on ESP32 STD demo app
 
-A demo binary crate for the ESP32[XX] and ESP-IDF, which connects to WiFi, Ethernet, drives a small HTTP server and draws on a LED screen.
+A demo STD binary crate for the ESP32[XX] and ESP-IDF, which connects to WiFi, Ethernet, drives a small HTTP server and draws on a LED screen.
 
 Highlights:
 
