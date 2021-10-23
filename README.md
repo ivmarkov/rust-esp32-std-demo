@@ -1,4 +1,4 @@
-# Rust on ESP32 "Hello, World" app
+# Rust on ESP32 demo app
 
 A demo binary crate for the ESP32[XX] and ESP-IDF, which connects to WiFi, Ethernet, drives a small HTTP server and draws on a LED screen.
 
@@ -15,7 +15,7 @@ Highlights:
 - NAPT support (Router from the SoftAP to the STA interface). **NOTE**: In production, do NOT leave the SoftAP interface open (without password)!
 - Driving a LED screen with the [embedded-graphics](https://crates.io/crates/embedded-graphics) Rust crate
   - ... via [esp-idf-hal](https://crates.io/crates/esp-idf-hal) ([embedded-hal](https://crates.io/crates/embedded-hal) drivers implemented on top of ESP-IDF)
-- (ESP32-S2 only) [Blink a LED](https://github.com/ivmarkov/rust-esp32-ulp-hello) by loading a pure Rust program onto the RiscV Ultra Low Power CPU
+- (ESP32-S2 only) [Blink a LED](https://github.com/ivmarkov/rust-esp32-ulp-blink) by loading a pure Rust program onto the RiscV Ultra Low Power CPU
 
 ## Build
 
@@ -26,14 +26,13 @@ Highlights:
   - (You can do this by issuing `rustup install nightly` and then `rustup default nightly` instead of installing/building the Rust & Clang ESP forks and switching to their `esp` toolchain as advised above)
 - If using the custom Espressif Clang, make sure that you DON'T have a system Clang installed as well, because even if you have the Espressif one first on your `$PATH`, Bindgen will still pick the system one
   - A workaround that does not require uninstalling the system Clang is to do `export LIBCLANG_PATH=<path to the Espressif Clang lib directory>` prior to continuing the build process
-- The build is using the `ldproxy` linker wrapper from [embuild](https://crates.io/crates/embuild), so install [ldproxy](https://crates.io/crates/embuild/ldproxy):
-  - `cargo install ldproxy`
-- Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-hello`
-- Enter it: `cd rust-esp32-std-hello`
+- `cargo install ldproxy`
+- Clone this repo: `git clone https://github.com/ivmarkov/rust-esp32-std-demo`
+- Enter it: `cd rust-esp32-std-demo`
 - Export two environment variables that would contain the SSID & password of your wireless network:
-  - `export RUST_ESP32_STD_HELLO_WIFI_SSID=<ssid>`
-  - `export RUST_ESP32_STD_HELLO_WIFI_PASS=<ssid>`
-- To configure the demo for your particular board, please uncomment the relevant [Rust target for your board](https://github.com/ivmarkov/rust-esp32-std-hello/blob/main/.cargo/config.toml#L5) and comment the others. Alternatively, just append the `--target <target>` flag to all `cargo build` lines below.
+  - `export RUST_ESP32_STD_DEMO_WIFI_SSID=<ssid>`
+  - `export RUST_ESP32_STD_DEMO_WIFI_PASS=<ssid>`
+- To configure the demo for your particular board, please uncomment the relevant [Rust target for your board](https://github.com/ivmarkov/rust-esp32-std-demo/blob/main/.cargo/config.toml#L2) and comment the others. Alternatively, just append the `--target <target>` flag to all `cargo build` lines below.
 - Build: `cargo build` or `cargo build --release`
   - If you would like to see the async networking in action, use the following build command instead: `export ESP_IDF_VERSION=master; cargo build --features native`
   - (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Add `ttgo` to the `--features` build flags above (as in `cargo build --features ttgo`) to be greeted with a `Hello Rust!` message on the board's LED screen
@@ -57,9 +56,8 @@ Highlights:
 ## Flash
 
 - `cargo install espflash`
-- `espflash /dev/ttyUSB0 target/[xtensa-esp32-espidf|xtensa-esp32s2-espidf|riscv32imc-esp-espidf]/debug/rust-esp32-std-hello`
+- `espflash /dev/ttyUSB0 target/[xtensa-esp32-espidf|xtensa-esp32s2-espidf|riscv32imc-esp-espidf]/debug/rust-esp32-std-demo`
 - Replace `dev/ttyUSB0` above with the USB port where you've connected the board
-- If espflash complains with `Error: IO error while using serial port: Operation timed out` or with error `Error: Failed to connect to the device`, just retry the flash operation
 
 **NOTE**: The above commands do use [`espflash`](https://crates.io/crates/espflash) and NOT [`cargo espflash`](https://crates.io/crates/cargo-espflash), even though both can be installed via Cargo. `cargo espflash` is essentially `espflash` but it has some extra superpowers, like the capability to build the project before flashing, or to generate an ESP32 .BIN file from the built .ELF image.
 
@@ -69,19 +67,27 @@ Highlights:
 - Use the instructions below **only** if you have flashed successfully with `espflash` at least once, or else you might not have a valid bootloader and partition table!
 - The instructions below only (re)flash the application image, as the (one and only) factory image starting from 0x10000 in the partition table!
 - Install esptool using PYthon: `pip install esptool`
-- (After each cargo build) Convert the elf image to binary: `esptool.py --chip [esp32|esp32s2|esp32c3] elf2image target/xtensa-esp32-espidf/debug/rust-esp32-std-hello`
-- (After each cargo build) Flash the resulting binary: `esptool.py --chip [esp32|esp32s2|esp32c3] -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x10000 target/xtensa-esp32-espidf/debug/rust-esp32-std-hello.bin`
+- (After each cargo build) Convert the elf image to binary: `esptool.py --chip [esp32|esp32s2|esp32c3] elf2image target/xtensa-esp32-espidf/debug/rust-esp32-std-demo`
+- (After each cargo build) Flash the resulting binary: `esptool.py --chip [esp32|esp32s2|esp32c3] -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x10000 target/xtensa-esp32-espidf/debug/rust-esp32-std-demo.bin`
 
 ## Monitor
 
 - Once flashed, the board can be connected with any suitable serial monitor, e.g.:
+  - ESPMonitor: `espmonitor /dev/ttyUSB0` (you need to `cargo install espmonitor` first)
   - Cargo PIO (this one **decodes stack traces**!): `cargo pio espidf monitor /dev/ttyUSB0` (you need to `cargo install cargo-pio` first)
-    - Please run it from within the `rust-esp32-std-hello` project directory, or else the built ELF file will not be detected, and the stack traces will not be decoded!
+    - Please run it from within the `rust-esp32-std-demo` project directory, or else the built ELF file will not be detected, and the stack traces will not be decoded!
   - Built-in Linux/MacOS screen: `screen /dev/ttyUSB0 115200` (use `Ctrl+A` and then type `:quit` to stop it)
-  - ESPMonitor: `espmonitor --speed 115200 /dev/ttyUSB0` (you need to `cargo install espmonitor` first)
   - Miniterm: `miniterm --raw /dev/ttyUSB0 115200`
 
-- You should see more or less the following:
+- If the app starts successfully, it should be listening on the printed IP address from the WiFi connection logs, port 80.
+
+- Open a browser, and navigate to one of these:
+  - `http://<printed-ip-address>`
+  - `http://<printed-ip-address>/foo?key=value`
+  - `http://<printed-ip-address>/bar`
+  - `http://<printed-ip-address>/ulp` (ESP32-S2 only)
+
+- The monitor should output more or less the following:
 ```
 Hello, world from Rust!
 More complex print [foo, bar]
@@ -109,7 +115,7 @@ I (4811) wifi:Init dynamic rx buffer num: 32
 I (4811) esp_idf_svc::wifi: Driver initialized
 I (4821) esp_idf_svc::wifi: Event handlers registered
 I (4821) esp_idf_svc::wifi: Initialization complete
-I (4831) rust_esp32_std_hello: Wifi created
+I (4831) rust_esp32_std_demo: Wifi created
 I (4831) esp_idf_svc::wifi: Setting configuration: Client(ClientConfiguration { ssid: "<your-ssid>", bssid: None, auth_method: WPA2Personal, password: "<your-pass>", ip_conf: Some(DHCP) })
 I (4851) esp_idf_svc::wifi: Stopping
 I (4861) esp_idf_svc::wifi: Disconnect requested
@@ -160,9 +166,9 @@ I (8451) esp_idf_svc::wifi: Providing status: Status(Started(Connected(Done(Clie
 I (8461) esp_idf_svc::wifi: Waiting for status done - success
 I (8461) esp_idf_svc::wifi: Started
 I (8471) esp_idf_svc::wifi: Configuration set
-I (8471) rust_esp32_std_hello: Wifi configuration set, about to get status
+I (8471) rust_esp32_std_demo: Wifi configuration set, about to get status
 I (8481) esp_idf_svc::wifi: Providing status: Status(Started(Connected(Done(ClientSettings { ip: 192.168.10.155, subnet: Subnet { gateway: 192.168.10.1, mask: Mask(24) }, dns: None, secondary_dns: None }))), Stopped)
-I (8501) rust_esp32_std_hello: Wifi connected, about to do some pings
+I (8501) rust_esp32_std_demo: Wifi connected, about to do some pings
 I (8511) esp_idf_svc::ping: About to run a summary ping 192.168.10.1 with configuration Configuration { count: 5, interval: 1s, timeout: 1s, data_size: 56, tos: 0 }
 I (8521) esp_idf_svc::ping: Ping session established, got handle 0x3ffc767c
 I (8531) esp_idf_svc::ping: Ping session started
@@ -181,16 +187,9 @@ I (13531) esp_idf_svc::ping: Ping end callback invoked
 I (13531) esp_idf_svc::ping: 5 packets transmitted, 5 received, time 18ms
 I (13531) esp_idf_svc::ping: Ping session stopped
 I (13531) esp_idf_svc::ping: Ping session 0x3ffc767c removed
-I (13541) rust_esp32_std_hello: Pinging done
+I (13541) rust_esp32_std_demo: Pinging done
 I (13551) esp_idf_svc::httpd: Started Httpd IDF server with config Configuration { http_port: 80, https_port: 443 }
 I (13561) esp_idf_svc::httpd: Registered Httpd IDF server handler Get for URI "/"
 I (13561) esp_idf_svc::httpd: Registered Httpd IDF server handler Get for URI "/foo"
 I (13571) esp_idf_svc::httpd: Registered Httpd IDF server handler Get for URI "/bar"
 ```
-
-- If the app starts successfully, it should be listening on the printed IP address from the WiFi connection logs, port 80.
-- Open a browser, and navigate to one of these:
-- `http://<printed-ip-address>`
-- `http://<printed-ip-address>/foo?key=value`
-- `http://<printed-ip-address>/bar`
-- `http://<printed-ip-address>/ulp` (ESP32-S2 only)

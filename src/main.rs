@@ -78,10 +78,10 @@ use st7789;
 
 #[allow(dead_code)]
 #[cfg(not(feature = "qemu"))]
-const SSID: &str = env!("RUST_ESP32_STD_HELLO_WIFI_SSID");
+const SSID: &str = env!("RUST_ESP32_STD_DEMO_WIFI_SSID");
 #[allow(dead_code)]
 #[cfg(not(feature = "qemu"))]
-const PASS: &str = env!("RUST_ESP32_STD_HELLO_WIFI_PASS");
+const PASS: &str = env!("RUST_ESP32_STD_DEMO_WIFI_PASS");
 
 #[cfg(esp32s2)]
 include!(env!("EMBUILD_GENERATED_SYMBOLS_FILE"));
@@ -94,6 +94,8 @@ thread_local! {
 }
 
 fn main() -> Result<()> {
+    esp_idf_sys::link_patches();
+
     test_print();
 
     test_atomics();
@@ -269,7 +271,7 @@ fn main() -> Result<()> {
 #[allow(clippy::vec_init_then_push)]
 fn test_print() {
     // Start simple
-    println!("Hello, world from Rust!");
+    println!("Hello from Rust!");
 
     // Check collections
     let mut children = vec![];
@@ -725,7 +727,7 @@ where
 fn httpd(mutex: Arc<(Mutex<Option<u32>>, Condvar)>) -> Result<idf::Server> {
     let server = idf::ServerRegistry::new()
         .at("/")
-        .get(|_| Ok("Hello, world!".into()))?
+        .get(|_| Ok("Hello from Rust!".into()))?
         .at("/foo")
         .get(|_| bail!("Boo, something happened!"))?
         .at("/bar")
