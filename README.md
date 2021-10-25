@@ -2,6 +2,8 @@
 
 A demo STD binary crate for the ESP32[XX] and ESP-IDF, which connects to WiFi, Ethernet, drives a small HTTP server and draws on a LED screen.
 
+![CI](https://github.com/ivmarkov/rust-esp32-std-demo/actions/workflows/ci.yml/badge.svg)
+
 Highlights:
 
 - **Pure Rust and pure Cargo build!** No CMake, no PlatformIO, no C helpers
