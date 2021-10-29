@@ -23,7 +23,7 @@ rustflags = ["-C", "default-linker-libraries"]
 
 [unstable]
 build-std = ["std", "panic_abort"]
-build-std-features = ["panic_immediate_abort"]
+#build-std-features = ["panic_immediate_abort"] # Temporarily comment this out, because of https://github.com/rust-lang/cargo/issues/10019
 configurable-env = true # No longer necessary since 1.56, as it was stabilized: https://github.com/rust-lang/cargo/blob/master/src/cargo/core/features.rs#L698
 extra-link-arg = true   # No longer necessary since 1.56, as it was stabilized: https://github.com/rust-lang/cargo/blob/master/src/cargo/core/features.rs#L695
 
