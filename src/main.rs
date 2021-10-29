@@ -974,6 +974,7 @@ impl ili9341::Mode for KalugaOrientation {
 
 // TODO: This is coming from the panic_abort crate (but only when panic_immediate_abort is NOT enabled),
 // because it calls fs::canonicalize() here: https://github.com/rust-lang/backtrace-rs/blob/master/src/symbolize/gimli/elf.rs#L353
+// The "standard" Unix implementation of fs::canonicalize() just calls libc::realpath, which is nort implemented for the ESP-IDF
 //
 // It is unclear what the long-term fix would be:
 // - Option A: Implement `realpath` for the ESP-IDF similarly to this implementation: https://sourceware.org/legacy-ml/newlib/2016/msg00498.html
