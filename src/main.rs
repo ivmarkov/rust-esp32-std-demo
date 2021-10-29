@@ -180,13 +180,13 @@ fn main() -> Result<()> {
             rmii_rdx0: pins.gpio25,
             rmii_rdx1: pins.gpio26,
             rmii_crs_dv: pins.gpio27,
-            rmii_mdc: pins.gpio12,
+            rmii_mdc: pins.gpio23,
             rmii_txd1: pins.gpio22,
             rmii_tx_en: pins.gpio21,
             rmii_txd0: pins.gpio19,
-            rmii_mdio: pins.gpio13,
+            rmii_mdio: pins.gpio18,
             rmii_ref_clk: pins.gpio0,
-            rst: Some(pins.gpio14),
+            rst: Some(pins.gpio5),
         },
         RmiiEthChipset::IP101,
         None,
@@ -970,4 +970,18 @@ impl ili9341::Mode for KalugaOrientation {
     fn is_landscape(&self) -> bool {
         matches!(self, Self::Landscape | Self::LandscapeFlipped)
     }
+}
+
+// TODO: This is coming from the panic_abort crate (but only when panic_immediate_abort is NOT enabled),
+// because it calls fs::canonicalize() here: https://github.com/rust-lang/backtrace-rs/blob/master/src/symbolize/gimli/elf.rs#L353
+//
+// It is unclear what the long-term fix would be:
+// - Option A: Implement `realpath` for the ESP-IDF similarly to this implementation: https://sourceware.org/legacy-ml/newlib/2016/msg00498.html
+//             and assuming that the current directory is `/`
+// - Option B1: Implement `realpath` for the ESP-IDF with a stub that always fails with ENOSYS
+// - Option B2: Implement a special version of fs::canonicalize() in Rust STD which fails with ENOSYS
+// - Option C: Implement a special version of fs::canonicalize() in Rust STD which panics <- this is what OS-es like Hermit & others do
+#[no_mangle]
+extern "C" fn realpath(path: *const std::os::raw::c_void, wat: *const std::os::raw::c_void) {
+    panic!("Not implemented");
 }
