@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-demo"
-version = "0.20.1"
+version = "0.20.2"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]

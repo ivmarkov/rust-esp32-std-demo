@@ -657,9 +657,6 @@ fn esp32s3_usb_otg_hello_world(
 ) -> Result<()> {
     info!("About to initialize the ESP32-S3-USB-OTG SPI LED driver ST7789VW");
 
-    let peripherals = Peripherals::take().unwrap();
-    let pins = peripherals.pins;
-
     let config = <spi::config::Config as Default>::default()
         .baudrate(80.MHz().into())
         .bit_order(spi::config::BitOrder::MSBFirst);
