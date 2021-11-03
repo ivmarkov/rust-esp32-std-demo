@@ -971,18 +971,3 @@ impl ili9341::Mode for KalugaOrientation {
         matches!(self, Self::Landscape | Self::LandscapeFlipped)
     }
 }
-
-// TODO: This is coming from the panic_abort crate (but only when panic_immediate_abort is NOT enabled),
-// because it calls fs::canonicalize() here: https://github.com/rust-lang/backtrace-rs/blob/master/src/symbolize/gimli/elf.rs#L353
-// The "standard" Unix implementation of fs::canonicalize() just calls libc::realpath, which is nort implemented for the ESP-IDF
-//
-// It is unclear what the long-term fix would be:
-// - Option A: Implement `realpath` for the ESP-IDF similarly to this implementation: https://sourceware.org/legacy-ml/newlib/2016/msg00498.html
-//             and assuming that the current directory is `/`
-// - Option B1: Implement `realpath` for the ESP-IDF with a stub that always fails with ENOSYS
-// - Option B2: Implement a special version of fs::canonicalize() in Rust STD which fails with ENOSYS
-// - Option C: Implement a special version of fs::canonicalize() in Rust STD which panics <- this is what OS-es like Hermit & others do
-#[no_mangle]
-extern "C" fn realpath(path: *const std::os::raw::c_void, wat: *const std::os::raw::c_void) {
-    panic!("Not implemented");
-}

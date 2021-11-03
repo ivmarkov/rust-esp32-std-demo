@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-demo"
-version = "0.20.0"
+version = "0.20.1"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -18,8 +18,7 @@ getrandom = { version = "0.2", git = "https://github.com/esp-rs-compat/getrandom
 getrandom1 = { version = "0.1", git = "https://github.com/esp-rs-compat/getrandom.git", package = "getrandom", branch = "0.1" }
 
 [profile.release]
-# symbols are nice and they don't increase the size on Flash
-debug = true
+debug = true # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
 
 [profile.dev]
@@ -55,10 +54,10 @@ experimental = ["esp-idf-svc/experimental", "embedded-svc/experimental"]
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
 url = "2"
-esp-idf-sys = { version = "0.21.1", features = ["binstart"] }
-embedded-svc = "0.11"
-esp-idf-svc = "0.27.1"
-esp-idf-hal = "0.21"
+esp-idf-sys = { version = "0.24.3", features = ["binstart"] }
+embedded-svc = "0.12"
+esp-idf-svc = "0.28.1"
+esp-idf-hal = "0.23.2"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 display-interface = "0.4"
@@ -69,7 +68,7 @@ ssd1306 = "0.7"
 smol = "1.2"
 
 [build-dependencies]
-embuild = "0.24.5"
+embuild = "0.25"
 anyhow = "1"
 
 # Future; might be possible once https://github.com/rust-lang/cargo/issues/9096 hits Cargo nightly:
