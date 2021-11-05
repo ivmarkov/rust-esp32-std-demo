@@ -106,7 +106,7 @@ fn main() -> Result<()> {
     esp_idf_svc::log::EspLogger::initialize_default();
 
     // Get backtraces from anyhow; only works for Xtensa arch currently
-    #[cfg(arch = "xtensa")]
+    #[cfg(target_arch = "xtensa")]
     env::set_var("RUST_BACKTRACE", "1");
 
     #[allow(unused)]
