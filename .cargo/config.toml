@@ -29,7 +29,7 @@ extra-link-arg = true   # No longer necessary since 1.56, as it was stabilized: 
 
 [env]
 ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
-ESP_IDF_VERSION = { value = "master" } # Uncomment this and enable the esp-idf-sys "native" build feature to build against ESP-IDF master
+#ESP_IDF_VERSION = { value = "master" } # Uncomment this and enable the esp-idf-sys "native" build feature to build against ESP-IDF master
 #ESP_IDF_VERSION = { value = "release/v4.4" } # Uncomment this and enable the esp-idf-sys "native" build feature to build against ESP-IDF v4.4
 
 # These configurations will pick up your custom "sdkconfig.release", "sdkconfig.debug" or "sdkconfig.defaults[.*]" files
