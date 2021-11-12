@@ -612,7 +612,7 @@ fn heltec_hello_world(
 
     let di = ssd1306::I2CDisplayInterface::new(i2c::Master::<i2c::I2C0, _, _>::new(
         i2c,
-        i2c::Pins { sda, scl },
+        i2c::MasterPins { sda, scl },
         config,
     )?);
 
@@ -627,14 +627,12 @@ fn heltec_hello_world(
 
     reset.set_high()?;
 
-    let mut display = Box::new(
-        ssd1306::Ssd1306::new(
-            di,
-            ssd1306::size::DisplaySize128x64,
-            ssd1306::rotation::DisplayRotation::Rotate0,
-        )
-        .into_buffered_graphics_mode(),
-    );
+    let mut display = ssd1306::Ssd1306::new(
+        di,
+        ssd1306::size::DisplaySize128x64,
+        ssd1306::rotation::DisplayRotation::Rotate0,
+    )
+    .into_buffered_graphics_mode();
 
     AnyError::<display_interface::DisplayError>::wrap(|| {
         display.init()?;

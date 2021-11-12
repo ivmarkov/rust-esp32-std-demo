@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-demo"
-version = "0.20.2"
+version = "0.20.3"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -15,13 +15,13 @@ smol = { git = "https://github.com/esp-rs-compat/smol" }
 polling = { git = "https://github.com/esp-rs-compat/polling" }
 socket2 = { git = "https://github.com/esp-rs-compat/socket2" }
 getrandom = { version = "0.2", git = "https://github.com/esp-rs-compat/getrandom.git" }
-getrandom1 = { version = "0.1", git = "https://github.com/esp-rs-compat/getrandom.git", package = "getrandom", branch = "0.1" }
+#getrandom1 = { version = "0.1", git = "https://github.com/esp-rs-compat/getrandom.git", package = "getrandom", branch = "0.1" }
 
-[profile.release]
+[profile.dev]
 debug = true # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
 
-[profile.dev]
+[profile.release]
 opt-level = "s"
 
 [features]
@@ -54,10 +54,10 @@ experimental = ["esp-idf-svc/experimental", "embedded-svc/experimental"]
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
 url = "2"
-esp-idf-sys = { version = "0.24.3", features = ["binstart"] }
+esp-idf-sys = { version = "0.24.4", features = ["binstart"] }
 embedded-svc = "0.12"
-esp-idf-svc = "0.28.1"
-esp-idf-hal = "0.23.2"
+esp-idf-svc = "0.29"
+esp-idf-hal = "0.24"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 display-interface = "0.4"
