@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-demo"
-version = "0.20.4"
+version = "0.20.5"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -56,7 +56,7 @@ log = "0.4"
 url = "2"
 esp-idf-sys = { version = "0.24.6", features = ["binstart"] }
 embedded-svc = "0.12"
-esp-idf-svc = "0.29.1"
+esp-idf-svc = "0.29.2"
 esp-idf-hal = "0.24"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"

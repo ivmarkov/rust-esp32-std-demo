@@ -50,6 +50,7 @@ use esp_idf_svc::httpd::ServerRegistry;
 use esp_idf_svc::netif::*;
 use esp_idf_svc::nvs::*;
 use esp_idf_svc::ping;
+use esp_idf_svc::sntp;
 use esp_idf_svc::sysloop::*;
 use esp_idf_svc::wifi::*;
 
@@ -226,6 +227,9 @@ fn main() -> Result<()> {
     #[cfg(not(feature = "qemu"))]
     #[cfg(esp_idf_config_lwip_ipv4_napt)]
     enable_napt(&mut wifi)?;
+
+    let _sntp = sntp::EspSntp::new_default()?;
+    info!("SNTP initialized");
 
     let mutex = Arc::new((Mutex::new(None), Condvar::new()));
 
