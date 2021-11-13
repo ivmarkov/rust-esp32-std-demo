@@ -16,13 +16,14 @@ polling = { git = "https://github.com/esp-rs-compat/polling" }
 socket2 = { git = "https://github.com/esp-rs-compat/socket2" }
 getrandom = { version = "0.2", git = "https://github.com/esp-rs-compat/getrandom.git" }
 #getrandom1 = { version = "0.1", git = "https://github.com/esp-rs-compat/getrandom.git", package = "getrandom", branch = "0.1" }
+esp-idf-svc = { path = "../esp-idf-svc" }
+
+[profile.release]
+opt-level = "s"
 
 [profile.dev]
 debug = true # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
-
-[profile.release]
-opt-level = "s"
 
 [features]
 # Enable this feature for the build to use ESP-IDF native tooling instead of PlatformIO under the hood
