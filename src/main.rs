@@ -34,7 +34,6 @@ use url;
 
 use smol;
 
-use embedded_svc::anyerror::*;
 use embedded_svc::eth;
 use embedded_svc::eth::Eth;
 use embedded_svc::httpd::registry::*;
@@ -43,6 +42,7 @@ use embedded_svc::io;
 use embedded_svc::ipv4;
 use embedded_svc::ping::Ping;
 use embedded_svc::wifi::*;
+use embedded_svc::utils::anyerror::*;
 
 use esp_idf_svc::eth::*;
 use esp_idf_svc::httpd as idf;
