@@ -27,7 +27,7 @@ use std::net::{TcpListener, TcpStream};
 use std::sync::{Condvar, Mutex};
 use std::{cell::RefCell, env, sync::atomic::*, sync::Arc, thread, time::*};
 
-use anyhow::*;
+use anyhow::bail;
 use log::*;
 
 use url;
