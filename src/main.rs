@@ -27,7 +27,7 @@ use std::net::{TcpListener, TcpStream};
 use std::sync::{Condvar, Mutex};
 use std::{cell::RefCell, env, sync::atomic::*, sync::Arc, thread, time::*};
 
-use anyhow::*;
+use anyhow::bail;
 use log::*;
 
 use url;
@@ -218,7 +218,7 @@ fn main() -> Result<()> {
 
     test_tcp_bind()?;
 
-    #[cfg(esp_idf_version = "4.4")]
+    #[cfg(all(feature = "experimental", not(esp_idf_version = "4.3")))]
     test_tcp_bind_async()?;
 
     #[cfg(feature = "experimental")]
@@ -423,7 +423,7 @@ fn test_tcp_bind() -> Result<()> {
     Ok(())
 }
 
-#[cfg(esp_idf_version = "4.4")]
+#[cfg(all(feature = "experimental", not(esp_idf_version = "4.3")))]
 fn test_tcp_bind_async() -> anyhow::Result<()> {
     async fn test_tcp_bind() -> smol::io::Result<()> {
         /// Echoes messages from the client back to it.
@@ -463,7 +463,8 @@ fn test_tcp_bind_async() -> anyhow::Result<()> {
 
 #[cfg(feature = "experimental")]
 fn test_https_client() -> Result<()> {
-    use embedded_svc::http::{self, client::*, status, HttpHeaders, HttpStatus};
+    use embedded_svc::http::{self, client::*, status, Headers, Status};
+    use embedded_svc::io::Bytes;
     use esp_idf_svc::http::client::*;
 
     let url = String::from("https://google.com");
@@ -474,10 +475,9 @@ fn test_https_client() -> Result<()> {
 
     let response = client.get(&url)?.submit()?;
 
-    let mut body = Vec::new();
-    io::StdIO(response.into_payload())
-        .take(3084)
-        .read_to_end(&mut body)?;
+    let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).take(3084).collect();
+
+    let body = body?;
 
     info!(
         "Body (truncated to 3K):\n{:?}",

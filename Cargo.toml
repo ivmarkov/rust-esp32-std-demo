@@ -54,10 +54,10 @@ experimental = ["esp-idf-svc/experimental", "embedded-svc/experimental"]
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
 url = "2"
-esp-idf-sys = { version = "0.25", features = ["binstart"] }
-embedded-svc = "0.13"
-esp-idf-svc = "0.30"
-esp-idf-hal = "0.25"
+esp-idf-sys = { version = "0.27", features = ["binstart"] }
+embedded-svc = "0.15"
+esp-idf-svc = "0.32"
+esp-idf-hal = "0.27"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 display-interface = "0.4"
