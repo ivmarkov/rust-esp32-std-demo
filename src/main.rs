@@ -160,7 +160,7 @@ fn main() -> Result<()> {
         pins.gpio5,
     )?;
 
-    #[allow(clippy::redundant-clone)]
+    #[allow(clippy::redundant_clone)]
     #[cfg(not(feature = "qemu"))]
     #[allow(unused_mut)]
     let mut wifi = wifi(
@@ -169,14 +169,14 @@ fn main() -> Result<()> {
         default_nvs.clone(),
     )?;
 
-    #[allow(clippy::redundant-clone)]
+    #[allow(clippy::redundant_clone)]
     #[cfg(feature = "qemu")]
     let eth = eth_configure(Box::new(EspEth::new_openeth(
         netif_stack.clone(),
         sys_loop_stack.clone(),
     )?))?;
 
-    #[allow(clippy::redundant-clone)]
+    #[allow(clippy::redundant_clone)]
     #[cfg(feature = "ip101")]
     let eth = eth_configure(Box::new(EspEth::new_rmii(
         netif_stack.clone(),
