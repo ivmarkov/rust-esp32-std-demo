@@ -1,9 +1,9 @@
 [build]
 # Uncomment the relevant target for your chip here (ESP32, ESP32-S2, ESP32-S3 or ESP32-C3)
-target = "xtensa-esp32-espidf"
+#target = "xtensa-esp32-espidf"
 #target = "xtensa-esp32s2-espidf"
 #target = "xtensa-esp32s3-espidf"
-#target = "riscv32imc-esp-espidf"
+target = "riscv32imc-esp-espidf"
 
 [target.xtensa-esp32-espidf]
 linker = "ldproxy"
@@ -24,29 +24,18 @@ rustflags = ["-C", "default-linker-libraries"]
 [unstable]
 build-std = ["std", "panic_abort"]
 build-std-features = ["panic_immediate_abort"]
-configurable-env = true # No longer necessary since 1.56, as it was stabilized: https://github.com/rust-lang/cargo/blob/master/src/cargo/core/features.rs#L698
-extra-link-arg = true   # No longer necessary since 1.56, as it was stabilized: https://github.com/rust-lang/cargo/blob/master/src/cargo/core/features.rs#L695
 
 [env]
-ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
-#ESP_IDF_VERSION = { value = "master" } # Uncomment this and enable the esp-idf-sys "native" build feature to build against ESP-IDF master
-#ESP_IDF_VERSION = { value = "release/v4.4" } # Uncomment this and enable the esp-idf-sys "native" build feature to build against ESP-IDF v4.4
+# Uncomment this and enable the esp-idf-sys "native" build feature to build against ESP-IDF 5.0 (master)
+#ESP_IDF_VERSION = { value = "master" }
+
+# Uncomment this and enable the esp-idf-sys "native" build feature to build against ESP-IDF v4.4
+#ESP_IDF_VERSION = { value = "release/v4.4" } 
 
 # These configurations will pick up your custom "sdkconfig.release", "sdkconfig.debug" or "sdkconfig.defaults[.*]" files
 # that you might put in the root of the project
 # The easiest way to generate a full "sdkconfig[.release|debug]" configuration (as opposed to manually enabling only the necessary flags via "sdkconfig.defaults[.*]"
-# is by running "cargo pio espidf menuconfig"
-ESP_IDF_SYS_GLOB_0 = { value = "/sdkconfig.*" }
-
-# Same thing but for the native build. Currently the native and PIO builds disagree how sdkconfig configuration should be passed to the ESP-IDF build
-# See https://github.com/esp-rs/esp-idf-sys/issues/10#issuecomment-919022205
+# is by running "cargo pio espidf menuconfig" (that is, if using the pio builder)
 #ESP_IDF_SDKCONFIG = { value = "./sdkconfig.release", relative = true }
 #ESP_IDF_SDKCONFIG = { value = "./sdkconfig.debug", relative = true }
-ESP_IDF_SDKCONFIG_DEFAULTS = { value = "./sdkconfig.defaults", relative = true }
-
-# Uncomment both lines below if you plan to place and use a custom partition table, "partitions.csv" at the root of this project
-# Note that the espflash utility is always flashing with its own partition table, which contains a single factory app of 3M max,
-# so you should use the esptool.py utility to flash the custom partition table and the app
-# Also see above regarding the Cargo version
-#ESP_IDF_SYS_GLOB_1 = { value = "/partitions.csv" }
-#ESP_IDF_SYS_PIO_CONF_0 = { value = "board_build.partitions = partitions.csv" }
+ESP_IDF_SDKCONFIG_DEFAULTS = { value = "sdkconfig.defaults;sdkconfig.defaults.esp32;sdkconfig.defaults.esp32s2" }
