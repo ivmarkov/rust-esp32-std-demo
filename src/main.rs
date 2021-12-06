@@ -773,7 +773,7 @@ fn httpd_ulp_endpoints(
                 .filter(|p| p.0 == "cycles")
                 .map(|p| str::parse::<u32>(&p.1).map_err(Error::msg))
                 .next()
-                .ok_or(anyhow!("No parameter cycles"))??;
+                .ok_or(anyhow::anyhow!("No parameter cycles"))??;
 
             let mut wait = mutex.0.lock().unwrap();
 
