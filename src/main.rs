@@ -157,6 +157,9 @@ fn main() -> Result<()> {
     #[cfg(feature = "heltec")]
     heltec_hello_world(pins.gpio16, peripherals.i2c0, pins.gpio4, pins.gpio15)?;
 
+    #[cfg(feature = "heltec_spi")]
+    heltec_hello_world_spi(pins.gpio4, pins.gpio16, peripherals.spi3, pins.gpio18, pins.gpio23, pins.gpio5)?;
+
     #[cfg(feature = "ssd1306g")]
     let mut led_power =
         ssd1306g_hello_world(peripherals.i2c0, pins.gpio14, pins.gpio22, pins.gpio21)?;
@@ -708,6 +711,62 @@ fn heltec_hello_world(
         di,
         ssd1306::size::DisplaySize128x64,
         ssd1306::rotation::DisplayRotation::Rotate0,
+    )
+    .into_buffered_graphics_mode();
+
+    AnyError::<display_interface::DisplayError>::wrap(|| {
+        display.init()?;
+
+        led_draw(&mut display)?;
+
+        display.flush()
+    })
+}
+
+#[cfg(feature = "heltec_spi")]
+fn heltec_hello_world_spi(
+    dc: gpio::Gpio4<gpio::Unknown>,
+    rst: gpio::Gpio16<gpio::Unknown>,
+    spi: spi::SPI3,
+    sclk: gpio::Gpio18<gpio::Unknown>,
+    sdo: gpio::Gpio23<gpio::Unknown>,
+    cs: gpio::Gpio5<gpio::Unknown>, 
+) -> Result<()> {
+    info!("About to initialize the Heltec SSD1306 SPI LED driver");
+
+    let config = <spi::config::Config as Default>::default()
+        .baudrate(10.MHz().into())
+        .bit_order(spi::config::BitOrder::MSBFirst);
+
+    let di = SPIInterfaceNoCS::new(
+        spi::Master::<spi::SPI3, _, _, _, _>::new(
+            spi,
+            spi::Pins {
+                sclk,
+                sdo,
+                sdi: Option::<gpio::Gpio19<gpio::Unknown>>::None,
+                cs: Some(cs),
+            },
+            config,
+        )?,
+        dc.into_output()?,
+    );
+
+    let mut delay = delay::Ets;
+    let mut reset = rst.into_output()?;
+
+    reset.set_high()?;
+    delay.delay_ms(1 as u32);
+
+    reset.set_low()?;
+    delay.delay_ms(10 as u32);
+
+    reset.set_high()?;
+
+    let mut display = ssd1306::Ssd1306::new(
+        di,
+        ssd1306::size::DisplaySize128x64,
+        ssd1306::rotation::DisplayRotation::Rotate180,
     )
     .into_buffered_graphics_mode();
 
