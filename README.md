@@ -68,7 +68,7 @@ Highlights:
 - You can also flash with the [esptool.py](https://github.com/espressif/esptool) utility which is part of the Espressif toolset
 - Use the instructions below **only** if you have flashed successfully with `espflash` at least once, or else you might not have a valid bootloader and partition table!
 - The instructions below only (re)flash the application image, as the (one and only) factory image starting from 0x10000 in the partition table!
-- Install esptool using PYthon: `pip install esptool`
+- Install esptool using Python: `pip install esptool`
 - (After each cargo build) Convert the elf image to binary: `esptool.py --chip [esp32|esp32s2|esp32c3] elf2image target/xtensa-esp32-espidf/debug/rust-esp32-std-demo`
 - (After each cargo build) Flash the resulting binary: `esptool.py --chip [esp32|esp32s2|esp32c3] -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x10000 target/xtensa-esp32-espidf/debug/rust-esp32-std-demo.bin`
 
