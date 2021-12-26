@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-demo"
-version = "0.20.8"
+version = "0.20.9"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -68,7 +68,7 @@ ssd1306 = "0.7"
 smol = "1.2"
 
 [build-dependencies]
-embuild = "0.26"
+embuild = "0.27"
 anyhow = "1"
 
 # Future; might be possible once https://github.com/rust-lang/cargo/issues/9096 hits Cargo nightly:
