@@ -22,8 +22,10 @@ compile_error!(
     "The `esp32s3_usb_otg` feature can only be built for the `xtensa-esp32s3-espidf` target."
 );
 
+use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::path::PathBuf;
 use std::sync::{Condvar, Mutex};
 use std::{cell::RefCell, env, sync::atomic::*, sync::Arc, thread, time::*};
 
@@ -102,6 +104,9 @@ fn main() -> Result<()> {
     test_atomics();
 
     test_threads();
+
+    #[cfg(esp_idf_version_major = "5")]
+    test_fs()?;
 
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
@@ -352,6 +357,14 @@ fn test_threads() {
     println!("Joins were successful.");
 }
 
+#[cfg(esp_idf_version_major = "5")]
+fn test_fs() -> Result<()> {
+    assert_eq!(fs::canonicalize(PathBuf::from("."))?, PathBuf::from("/"));
+    assert_eq!(fs::canonicalize(PathBuf::from("/").join("foo").join("bar").join(".").join("..").join("baz"))?, PathBuf::from("/foo/baz"));
+
+    Ok(())
+}
+
 fn test_tcp() -> Result<()> {
     info!("About to open a TCP connection to 1.1.1.1 port 80");
 
@@ -458,9 +471,9 @@ fn test_tcp_bind_async() -> anyhow::Result<()> {
         })
     })?;
 
-    thread::spawn(move || {
+    thread::Builder::new().stack_size(4096).spawn(move || {
         smol::block_on(test_tcp_bind()).unwrap();
-    });
+    })?;
 
     Ok(())
 }
@@ -739,7 +752,9 @@ fn httpd(mutex: Arc<(Mutex<Option<u32>>, Condvar)>) -> Result<idf::Server> {
                 .status_message("No permissions")
                 .body("You have no permissions to access this page".into())
                 .into()
-        })?;
+        })?
+        .at("/panic")
+        .get(|_| panic!("User requested a panic!"))?;
 
     #[cfg(esp32s2)]
     let server = httpd_ulp_endpoints(server, mutex)?;

@@ -26,16 +26,15 @@ build-std = ["std", "panic_abort"]
 build-std-features = ["panic_immediate_abort"]
 
 [env]
-# Uncomment this and enable the esp-idf-sys "native" build feature to build against ESP-IDF 5.0 (master)
+# Uncomment this and use the esp-idf-sys "native" build feature (`cargo build --features native`) to build against ESP-IDF 5.0 (master)
 #ESP_IDF_VERSION = { value = "master" }
 
-# Uncomment this and enable the esp-idf-sys "native" build feature to build against ESP-IDF v4.4
+# Uncomment this and use the esp-idf-sys "native" build feature (`cargo build --features native`) to build against ESP-IDF v4.4
 #ESP_IDF_VERSION = { value = "release/v4.4" } 
 
 # These configurations will pick up your custom "sdkconfig.release", "sdkconfig.debug" or "sdkconfig.defaults[.*]" files
 # that you might put in the root of the project
-# The easiest way to generate a full "sdkconfig[.release|debug]" configuration (as opposed to manually enabling only the necessary flags via "sdkconfig.defaults[.*]"
+# The easiest way to generate a full "sdkconfig" configuration (as opposed to manually enabling only the necessary flags via "sdkconfig.defaults[.*]"
 # is by running "cargo pio espidf menuconfig" (that is, if using the pio builder)
-#ESP_IDF_SDKCONFIG = { value = "./sdkconfig.release", relative = true }
-#ESP_IDF_SDKCONFIG = { value = "./sdkconfig.debug", relative = true }
+#ESP_IDF_SDKCONFIG = { value = "sdkconfig.release;sdkconfig.debug" }
 ESP_IDF_SDKCONFIG_DEFAULTS = { value = "sdkconfig.defaults;sdkconfig.defaults.esp32;sdkconfig.defaults.esp32s2" }
