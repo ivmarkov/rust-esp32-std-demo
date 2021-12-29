@@ -154,6 +154,9 @@ fn main() -> Result<()> {
     #[cfg(feature = "heltec")]
     heltec_hello_world(pins.gpio16, peripherals.i2c0, pins.gpio4, pins.gpio15)?;
 
+    #[cfg(feature = "ssd1306g")]
+    let mut led_power = ssd1306g_hello_world(peripherals.i2c0, pins.gpio2, pins.gpio6, pins.gpio7)?;
+
     #[cfg(feature = "esp32s3_usb_otg")]
     esp32s3_usb_otg_hello_world(
         pins.gpio9,
@@ -243,6 +246,16 @@ fn main() -> Result<()> {
     let mutex = Arc::new((Mutex::new(None), Condvar::new()));
 
     let httpd = httpd(mutex.clone())?;
+
+    #[cfg(feature = "ssd1306g")]
+    {
+        for s in 0..3 {
+            info!("Powering off the display in {} secs", 3 - s);
+            thread::sleep(Duration::from_secs(1));
+        }
+
+        led_power.set_low()?;
+    }
 
     let mut wait = mutex.0.lock().unwrap();
 
@@ -360,7 +373,17 @@ fn test_threads() {
 #[cfg(esp_idf_version_major = "5")]
 fn test_fs() -> Result<()> {
     assert_eq!(fs::canonicalize(PathBuf::from("."))?, PathBuf::from("/"));
-    assert_eq!(fs::canonicalize(PathBuf::from("/").join("foo").join("bar").join(".").join("..").join("baz"))?, PathBuf::from("/foo/baz"));
+    assert_eq!(
+        fs::canonicalize(
+            PathBuf::from("/")
+                .join("foo")
+                .join("bar")
+                .join(".")
+                .join("..")
+                .join("baz")
+        )?,
+        PathBuf::from("/foo/baz")
+    );
 
     Ok(())
 }
@@ -658,10 +681,56 @@ fn heltec_hello_world(
     AnyError::<display_interface::DisplayError>::wrap(|| {
         display.init()?;
 
-        led_draw(&mut *display)?;
+        led_draw(&mut display)?;
 
         display.flush()
     })
+}
+
+#[cfg(feature = "ssd1306g")]
+fn ssd1306g_hello_world(
+    i2c: i2c::I2C0,
+    pwr: gpio::Gpio2<gpio::Unknown>,
+    scl: gpio::Gpio6<gpio::Unknown>,
+    sda: gpio::Gpio7<gpio::Unknown>,
+) -> Result<gpio::Gpio2<gpio::Output>> {
+    info!("About to initialize a generic SSD1306 I2C LED driver");
+
+    let config = <i2c::config::MasterConfig as Default>::default().baudrate(400.kHz().into());
+
+    let di = ssd1306::I2CDisplayInterface::new(i2c::Master::<i2c::I2C0, _, _>::new(
+        i2c,
+        i2c::MasterPins { sda, scl },
+        config,
+    )?);
+
+    let mut delay = delay::Ets;
+    let mut power = pwr.into_output()?;
+
+    // Powering an OLED display via an output pin allows one to shutdown the display
+    // when it is no longer needed so as to conserve power
+    //
+    // Of course, the I2C driver should also be properly de-initialized etc.
+    power.set_drive_strength(gpio::DriveStrength::I40mA)?;
+    power.set_high()?;
+    delay.delay_ms(10 as u32);
+
+    let mut display = ssd1306::Ssd1306::new(
+        di,
+        ssd1306::size::DisplaySize128x64,
+        ssd1306::rotation::DisplayRotation::Rotate0,
+    )
+    .into_buffered_graphics_mode();
+
+    AnyError::<display_interface::DisplayError>::wrap(|| {
+        display.init()?;
+
+        led_draw(&mut display)?;
+
+        display.flush()
+    })?;
+
+    Ok(power)
 }
 
 #[cfg(feature = "esp32s3_usb_otg")]
