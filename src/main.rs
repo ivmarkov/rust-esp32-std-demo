@@ -36,6 +36,8 @@ use url;
 
 use smol;
 
+use embedded_hal::blocking::delay::DelayMs;
+
 use embedded_svc::eth;
 use embedded_svc::eth::Eth;
 use embedded_svc::httpd::registry::*;
@@ -56,6 +58,7 @@ use esp_idf_svc::sntp;
 use esp_idf_svc::sysloop::*;
 use esp_idf_svc::wifi::*;
 
+use esp_idf_hal::adc;
 use esp_idf_hal::delay;
 use esp_idf_hal::gpio;
 use esp_idf_hal::i2c;
@@ -155,7 +158,8 @@ fn main() -> Result<()> {
     heltec_hello_world(pins.gpio16, peripherals.i2c0, pins.gpio4, pins.gpio15)?;
 
     #[cfg(feature = "ssd1306g")]
-    let mut led_power = ssd1306g_hello_world(peripherals.i2c0, pins.gpio2, pins.gpio6, pins.gpio7)?;
+    let mut led_power =
+        ssd1306g_hello_world(peripherals.i2c0, pins.gpio14, pins.gpio22, pins.gpio21)?;
 
     #[cfg(feature = "esp32s3_usb_otg")]
     esp32s3_usb_otg_hello_world(
@@ -259,12 +263,41 @@ fn main() -> Result<()> {
 
     let mut wait = mutex.0.lock().unwrap();
 
+    #[cfg(esp32)]
+    let mut hall_sensor = peripherals.hall_sensor;
+
+    #[cfg(esp32)]
+    let mut a2 = pins.gpio34.into_analog_atten_11db()?;
+    #[cfg(any(esp32s2, esp32s3))]
+    let mut a2 = pins.gpio2.into_analog_atten_11db()?;
+    #[cfg(esp32c3)]
+    let mut a2 = pins.gpio2.into_analog_atten_11db()?;
+
+    let mut powered_adc1 = adc::PoweredAdc::new(
+        peripherals.adc1,
+        adc::config::Config::new().calibration(true),
+    )?;
+
     #[allow(unused)]
     let cycles = loop {
         if let Some(cycles) = *wait {
             break cycles;
         } else {
-            wait = mutex.1.wait(wait).unwrap();
+            wait = mutex
+                .1
+                .wait_timeout(wait, Duration::from_secs(1))
+                .unwrap()
+                .0;
+
+            #[cfg(esp32)]
+            log::info!(
+                "Hall sensor reading: {}mV",
+                powered_adc1.read(&mut hall_sensor).unwrap()
+            );
+            log::info!(
+                "A2 sensor reading: {}mV",
+                powered_adc1.read(&mut a2).unwrap()
+            );
         }
     };
 
@@ -690,10 +723,10 @@ fn heltec_hello_world(
 #[cfg(feature = "ssd1306g")]
 fn ssd1306g_hello_world(
     i2c: i2c::I2C0,
-    pwr: gpio::Gpio2<gpio::Unknown>,
-    scl: gpio::Gpio6<gpio::Unknown>,
-    sda: gpio::Gpio7<gpio::Unknown>,
-) -> Result<gpio::Gpio2<gpio::Output>> {
+    pwr: gpio::Gpio14<gpio::Unknown>,
+    scl: gpio::Gpio22<gpio::Unknown>,
+    sda: gpio::Gpio21<gpio::Unknown>,
+) -> Result<gpio::Gpio14<gpio::Output>> {
     info!("About to initialize a generic SSD1306 I2C LED driver");
 
     let config = <i2c::config::MasterConfig as Default>::default().baudrate(400.kHz().into());
@@ -713,7 +746,7 @@ fn ssd1306g_hello_world(
     // Of course, the I2C driver should also be properly de-initialized etc.
     power.set_drive_strength(gpio::DriveStrength::I40mA)?;
     power.set_high()?;
-    delay.delay_ms(10 as u32);
+    delay.delay_ms(10_u32);
 
     let mut display = ssd1306::Ssd1306::new(
         di,

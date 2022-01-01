@@ -1,9 +1,9 @@
 [build]
 # Uncomment the relevant target for your chip here (ESP32, ESP32-S2, ESP32-S3 or ESP32-C3)
-#target = "xtensa-esp32-espidf"
+target = "xtensa-esp32-espidf"
 #target = "xtensa-esp32s2-espidf"
 #target = "xtensa-esp32s3-espidf"
-target = "riscv32imc-esp-espidf"
+#target = "riscv32imc-esp-espidf"
 
 [target.xtensa-esp32-espidf]
 linker = "ldproxy"

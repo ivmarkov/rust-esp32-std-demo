@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-demo"
-version = "0.20.11"
+version = "0.20.12"
 authors = ["ivmarkov"]
 edition = "2018"
 categories = ["embedded", "hardware-support"]
@@ -40,7 +40,7 @@ ttgo = []
 # Enable this feature in case you have an ESP32S3-USB-OTG board and would like to see a LED screen demo
 heltec = []
 
-# Enable this feature in case you have a generic SSD1306 screen connected to pins 2, 6 and 7 of your board
+# Enable this feature in case you have a generic SSD1306 screen connected to pins 14, 22 and 21 of your board
 ssd1306g = []
 
 esp32s3_usb_otg = []
@@ -59,8 +59,8 @@ log = "0.4"
 url = "2"
 esp-idf-sys = { version = "0.28.3", features = ["binstart"] }
 embedded-svc = "0.15.4"
-esp-idf-svc = "0.34.2"
-esp-idf-hal = "0.29.5"
+esp-idf-svc = "0.34.3"
+esp-idf-hal = "0.30.0"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 display-interface = "0.4"
