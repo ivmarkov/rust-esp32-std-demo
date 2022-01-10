@@ -157,8 +157,8 @@ fn main() -> Result<()> {
     #[cfg(feature = "heltec")]
     heltec_hello_world(pins.gpio16, peripherals.i2c0, pins.gpio4, pins.gpio15)?;
 
-    #[cfg(feature = "heltec_spi")]
-    heltec_hello_world_spi(pins.gpio4, pins.gpio16, peripherals.spi3, pins.gpio18, pins.gpio23, pins.gpio5)?;
+    #[cfg(feature = "ssd1306g_spi")]
+    ssd1306g_hello_world_spi(pins.gpio4, pins.gpio16, peripherals.spi3, pins.gpio18, pins.gpio23, pins.gpio5)?;
 
     #[cfg(feature = "ssd1306g")]
     let mut led_power =
@@ -723,8 +723,8 @@ fn heltec_hello_world(
     })
 }
 
-#[cfg(feature = "heltec_spi")]
-fn heltec_hello_world_spi(
+#[cfg(feature = "ssd1306g_spi")]
+fn ssd1306g_hello_world_spi(
     dc: gpio::Gpio4<gpio::Unknown>,
     rst: gpio::Gpio16<gpio::Unknown>,
     spi: spi::SPI3,
@@ -732,7 +732,7 @@ fn heltec_hello_world_spi(
     sdo: gpio::Gpio23<gpio::Unknown>,
     cs: gpio::Gpio5<gpio::Unknown>, 
 ) -> Result<()> {
-    info!("About to initialize the Heltec SSD1306 SPI LED driver");
+    info!("About to initialize the SSD1306 SPI LED driver");
 
     let config = <spi::config::Config as Default>::default()
         .baudrate(10.MHz().into())
