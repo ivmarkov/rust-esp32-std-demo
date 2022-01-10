@@ -37,6 +37,8 @@ use url;
 use smol;
 
 use embedded_hal::blocking::delay::DelayMs;
+use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::adc::OneShot;
 
 use embedded_svc::eth;
 use embedded_svc::eth::Eth;
@@ -573,8 +575,7 @@ fn ttgo_hello_world(
     info!("About to initialize the TTGO ST7789 LED driver");
 
     let config = <spi::config::Config as Default>::default()
-        .baudrate(26.MHz().into())
-        .bit_order(spi::config::BitOrder::MSBFirst);
+        .baudrate(26.MHz().into());
 
     let mut backlight = backlight.into_output()?;
     backlight.set_high()?;
@@ -630,8 +631,7 @@ fn kaluga_hello_world(
     );
 
     let config = <spi::config::Config as Default>::default()
-        .baudrate((if ili9341 { 40 } else { 80 }).MHz().into())
-        .bit_order(spi::config::BitOrder::MSBFirst);
+        .baudrate((if ili9341 { 40 } else { 80 }).MHz().into());
 
     let mut backlight = backlight.into_output()?;
     backlight.set_high()?;
@@ -779,8 +779,7 @@ fn esp32s3_usb_otg_hello_world(
     info!("About to initialize the ESP32-S3-USB-OTG SPI LED driver ST7789VW");
 
     let config = <spi::config::Config as Default>::default()
-        .baudrate(80.MHz().into())
-        .bit_order(spi::config::BitOrder::MSBFirst);
+        .baudrate(80.MHz().into());
 
     let mut backlight = backlight.into_output()?;
     backlight.set_high()?;
