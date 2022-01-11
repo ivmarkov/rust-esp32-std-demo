@@ -40,6 +40,9 @@ ttgo = []
 # Enable this feature in case you have an ESP32S3-USB-OTG board and would like to see a LED screen demo
 heltec = []
 
+# Enable this feature in case you have a generic SSD1306 Display connected via SPI to pins 3, 4, 5, 16, 18, 23 (SPI3) of your board
+ssd1306g_spi = []
+
 # Enable this feature in case you have a generic SSD1306 screen connected to pins 14, 22 and 21 of your board
 ssd1306g = []
 
