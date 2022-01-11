@@ -158,7 +158,14 @@ fn main() -> Result<()> {
     heltec_hello_world(pins.gpio16, peripherals.i2c0, pins.gpio4, pins.gpio15)?;
 
     #[cfg(feature = "ssd1306g_spi")]
-    ssd1306g_hello_world_spi(pins.gpio4, pins.gpio16, peripherals.spi3, pins.gpio18, pins.gpio23, pins.gpio5)?;
+    ssd1306g_hello_world_spi(
+        pins.gpio4,
+        pins.gpio16,
+        peripherals.spi3,
+        pins.gpio18,
+        pins.gpio23,
+        pins.gpio5,
+    )?;
 
     #[cfg(feature = "ssd1306g")]
     let mut led_power =
@@ -730,7 +737,7 @@ fn ssd1306g_hello_world_spi(
     spi: spi::SPI3,
     sclk: gpio::Gpio18<gpio::Unknown>,
     sdo: gpio::Gpio23<gpio::Unknown>,
-    cs: gpio::Gpio5<gpio::Unknown>, 
+    cs: gpio::Gpio5<gpio::Unknown>,
 ) -> Result<()> {
     info!("About to initialize the SSD1306 SPI LED driver");
 
