@@ -741,8 +741,7 @@ fn ssd1306g_hello_world_spi(
     info!("About to initialize the SSD1306 SPI LED driver");
 
     let config = <spi::config::Config as Default>::default()
-        .baudrate(10.MHz().into())
-        .bit_order(spi::config::BitOrder::MSBFirst);
+        .baudrate(10.MHz().into());
 
     let di = SPIInterfaceNoCS::new(
         spi::Master::<spi::SPI3, _, _, _, _>::new(
