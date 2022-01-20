@@ -976,20 +976,12 @@ fn httpd_ulp_endpoints(
 
 #[cfg(esp32s2)]
 fn start_ulp(cycles: u32) -> Result<()> {
-    use esp_idf_hal::ulp;
-
     unsafe {
         esp!(esp_idf_sys::ulp_riscv_load_binary(
             ULP.as_ptr(),
             ULP.len() as _
         ))?;
         info!("RiscV ULP binary loaded successfully");
-
-        // Once started, the ULP will wakeup every 5 minutes
-        // TODO: Figure out how to disable ULP timer-based wakeup completely, with an ESP-IDF call
-        ulp::enable_timer(false);
-
-        info!("RiscV ULP Timer configured");
 
         info!(
             "Default ULP LED blink cycles: {}",
