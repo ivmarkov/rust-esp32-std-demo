@@ -47,6 +47,7 @@ use embedded_svc::httpd::*;
 use embedded_svc::io;
 use embedded_svc::ipv4;
 use embedded_svc::ping::Ping;
+#[cfg(feature = "experimental")]
 use embedded_svc::timer::*;
 use embedded_svc::utils::anyerror::*;
 use embedded_svc::wifi::*;
@@ -59,6 +60,7 @@ use esp_idf_svc::nvs::*;
 use esp_idf_svc::ping;
 use esp_idf_svc::sntp;
 use esp_idf_svc::sysloop::*;
+#[cfg(feature = "experimental")]
 use esp_idf_svc::timer::*;
 use esp_idf_svc::wifi::*;
 
