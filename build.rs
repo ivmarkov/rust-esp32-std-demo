@@ -17,10 +17,14 @@ fn main() -> anyhow::Result<()> {
         //let ulp_elf = PathBuf::from(env::var_os("CARGO_BIN_FILE_RUST_ESP32_ULP_BLINK_rust_esp32_ulp_blink").unwrap());
 
         let ulp_elf = PathBuf::from("ulp").join("rust-esp32-ulp-blink");
-        symgen::run(&ulp_elf, 0x5000_0000)?; // This is where the RTC Slow Mem is mapped within the ESP32-S2 memory space
-        bingen::run(&ulp_elf)?;
+        cargo::track_file(&ulp_elf);
 
-        cargo::track_file(ulp_elf);
+        // This is where the RTC Slow Mem is mapped within the ESP32-S2 memory space
+        let ulp_bin = symgen::Symgen::new(&ulp_elf, 0x5000_0000_u64).run()?;
+        cargo::track_file(ulp_bin);
+
+        let ulp_sym = bingen::Bingen::new(ulp_elf).run()?;
+        cargo::track_file(ulp_sym);
     }
 
     cfg.output();

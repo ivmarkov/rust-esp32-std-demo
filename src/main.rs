@@ -66,7 +66,6 @@ use esp_idf_hal::gpio;
 use esp_idf_hal::i2c;
 use esp_idf_hal::prelude::*;
 use esp_idf_hal::spi;
-use esp_idf_hal::ulp;
 
 use esp_idf_sys;
 use esp_idf_sys::esp;
@@ -334,7 +333,7 @@ fn main() -> Result<()> {
     }
 
     #[cfg(esp32s2)]
-    start_ulp(cycles)?;
+    start_ulp(peripherals.ulp, cycles)?;
 
     Ok(())
 }
@@ -975,26 +974,25 @@ fn httpd_ulp_endpoints(
 }
 
 #[cfg(esp32s2)]
-fn start_ulp(cycles: u32) -> Result<()> {
+fn start_ulp(mut ulp: esp_idf_hal::ulp::ULP, cycles: u32) -> Result<()> {
+    let cycles_var = CYCLES as *mut u32;
+
     unsafe {
-        esp!(esp_idf_sys::ulp_riscv_load_binary(
-            ULP.as_ptr(),
-            ULP.len() as _
-        ))?;
+        ulp.load(ULP)?;
         info!("RiscV ULP binary loaded successfully");
 
         info!(
             "Default ULP LED blink cycles: {}",
-            core::ptr::read_volatile(CYCLES as *mut u32)
+            ulp.read_var(cycles_var)?
         );
 
-        core::ptr::write_volatile(CYCLES as *mut u32, cycles);
+        ulp.write_var(cycles_var, cycles)?;
         info!(
             "Sent {} LED blink cycles to the ULP",
-            core::ptr::read_volatile(CYCLES as *mut u32)
+            ulp.read_var(cycles_var)?
         );
 
-        esp!(esp_idf_sys::ulp_riscv_run())?;
+        ulp.start()?;
         info!("RiscV ULP started");
 
         esp!(esp_idf_sys::esp_sleep_enable_ulp_wakeup())?;
@@ -1122,7 +1120,7 @@ fn enable_napt(wifi: &mut EspWifi) -> Result<()> {
 }
 
 // Kaluga needs customized screen orientation commands
-// (not a surprise; quite a few ILI9341 boards need these as evidences in the TFT_eSPI & lvgl ESP32 C drivers)
+// (not a surprise; quite a few ILI9341 boards need these as evidenced in the TFT_eSPI & lvgl ESP32 C drivers)
 pub enum KalugaOrientation {
     Portrait,
     PortraitFlipped,
