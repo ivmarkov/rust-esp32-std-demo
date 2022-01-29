@@ -47,6 +47,7 @@ use embedded_svc::httpd::*;
 use embedded_svc::io;
 use embedded_svc::ipv4;
 use embedded_svc::ping::Ping;
+use embedded_svc::timer::*;
 use embedded_svc::utils::anyerror::*;
 use embedded_svc::wifi::*;
 
@@ -58,6 +59,7 @@ use esp_idf_svc::nvs::*;
 use esp_idf_svc::ping;
 use esp_idf_svc::sntp;
 use esp_idf_svc::sysloop::*;
+use esp_idf_svc::timer::*;
 use esp_idf_svc::wifi::*;
 
 use esp_idf_hal::adc;
@@ -111,7 +113,7 @@ fn main() -> Result<()> {
 
     test_threads();
 
-    #[cfg(esp_idf_version_major = "5")]
+    #[cfg(not(esp_idf_version = "4.3"))]
     test_fs()?;
 
     // Bind the log crate to the ESP Logging facilities
@@ -121,6 +123,9 @@ fn main() -> Result<()> {
     // TODO: No longer working with ESP-IDF 4.3.1+
     //#[cfg(target_arch = "xtensa")]
     //env::set_var("RUST_BACKTRACE", "1");
+
+    #[cfg(feature = "experimental")]
+    let _timer = test_timer()?;
 
     #[allow(unused)]
     let peripherals = Peripherals::take().unwrap();
@@ -427,7 +432,32 @@ fn test_threads() {
     println!("Joins were successful.");
 }
 
-#[cfg(esp_idf_version_major = "5")]
+#[cfg(feature = "experimental")]
+fn test_timer() -> Result<EspPeriodicTimer> {
+    info!("About to schedule a one-shot timer for after 2 seconds");
+    let mut once_timer = EspOnce::new()?.after(Duration::from_secs(2), || {
+        info!("One-shot timer triggered");
+
+        Result::<_, anyhow::Error>::Ok(())
+    })?;
+
+    once_timer.start()?;
+
+    thread::sleep(Duration::from_secs(3));
+
+    info!("About to schedule a periodic timer every five seconds");
+    let mut periodic_timer = EspPeriodic::new()?.every(Duration::from_secs(5), || {
+        info!("Tick from periodic timer");
+
+        Result::<_, anyhow::Error>::Ok(())
+    })?;
+
+    periodic_timer.start()?;
+
+    Ok(periodic_timer)
+}
+
+#[cfg(not(esp_idf_version = "4.3"))]
 fn test_fs() -> Result<()> {
     assert_eq!(fs::canonicalize(PathBuf::from("."))?, PathBuf::from("/"));
     assert_eq!(
