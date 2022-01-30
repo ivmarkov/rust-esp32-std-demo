@@ -30,6 +30,8 @@ use std::sync::{Condvar, Mutex};
 use std::{cell::RefCell, env, sync::atomic::*, sync::Arc, thread, time::*};
 
 use anyhow::bail;
+use embedded_svc::sys_time::SystemTime;
+use esp_idf_svc::systime::EspSystemTime;
 use log::*;
 
 use url;
@@ -47,8 +49,6 @@ use embedded_svc::httpd::*;
 use embedded_svc::io;
 use embedded_svc::ipv4;
 use embedded_svc::ping::Ping;
-#[cfg(feature = "experimental")]
-use embedded_svc::timer::*;
 use embedded_svc::utils::anyerror::*;
 use embedded_svc::wifi::*;
 
@@ -60,8 +60,6 @@ use esp_idf_svc::nvs::*;
 use esp_idf_svc::ping;
 use esp_idf_svc::sntp;
 use esp_idf_svc::sysloop::*;
-#[cfg(feature = "experimental")]
-use esp_idf_svc::timer::*;
 use esp_idf_svc::wifi::*;
 
 use esp_idf_hal::adc;
@@ -71,8 +69,8 @@ use esp_idf_hal::i2c;
 use esp_idf_hal::prelude::*;
 use esp_idf_hal::spi;
 
-use esp_idf_sys;
 use esp_idf_sys::esp;
+use esp_idf_sys::{self, c_types};
 
 use display_interface_spi::SPIInterfaceNoCS;
 
@@ -125,9 +123,6 @@ fn main() -> Result<()> {
     // TODO: No longer working with ESP-IDF 4.3.1+
     //#[cfg(target_arch = "xtensa")]
     //env::set_var("RUST_BACKTRACE", "1");
-
-    #[cfg(feature = "experimental")]
-    let _timer = test_timer()?;
 
     #[allow(unused)]
     let peripherals = Peripherals::take().unwrap();
@@ -265,18 +260,15 @@ fn main() -> Result<()> {
 
     test_tcp_bind()?;
 
-    #[cfg(all(feature = "experimental", not(esp_idf_version = "4.3")))]
-    test_tcp_bind_async()?;
+    let _sntp = sntp::EspSntp::new_default()?;
+    info!("SNTP initialized");
 
     #[cfg(feature = "experimental")]
-    test_https_client()?;
+    let _experiments = experimental::test()?;
 
     #[cfg(not(feature = "qemu"))]
     #[cfg(esp_idf_config_lwip_ipv4_napt)]
     enable_napt(&mut wifi)?;
-
-    let _sntp = sntp::EspSntp::new_default()?;
-    info!("SNTP initialized");
 
     let mutex = Arc::new((Mutex::new(None), Condvar::new()));
 
@@ -434,31 +426,6 @@ fn test_threads() {
     println!("Joins were successful.");
 }
 
-#[cfg(feature = "experimental")]
-fn test_timer() -> Result<EspPeriodicTimer> {
-    info!("About to schedule a one-shot timer for after 2 seconds");
-    let mut once_timer = EspOnce::new()?.after(Duration::from_secs(2), || {
-        info!("One-shot timer triggered");
-
-        Result::<_, anyhow::Error>::Ok(())
-    })?;
-
-    once_timer.start()?;
-
-    thread::sleep(Duration::from_secs(3));
-
-    info!("About to schedule a periodic timer every five seconds");
-    let mut periodic_timer = EspPeriodic::new()?.every(Duration::from_secs(5), || {
-        info!("Tick from periodic timer");
-
-        Result::<_, anyhow::Error>::Ok(())
-    })?;
-
-    periodic_timer.start()?;
-
-    Ok(periodic_timer)
-}
-
 #[cfg(not(esp_idf_version = "4.3"))]
 fn test_fs() -> Result<()> {
     assert_eq!(fs::canonicalize(PathBuf::from("."))?, PathBuf::from("/"));
@@ -552,68 +519,244 @@ fn test_tcp_bind() -> Result<()> {
     Ok(())
 }
 
-#[cfg(all(feature = "experimental", not(esp_idf_version = "4.3")))]
-fn test_tcp_bind_async() -> anyhow::Result<()> {
-    async fn test_tcp_bind() -> smol::io::Result<()> {
-        /// Echoes messages from the client back to it.
-        async fn echo(stream: smol::Async<TcpStream>) -> smol::io::Result<()> {
-            smol::io::copy(&stream, &mut &stream).await?;
-            Ok(())
-        }
+#[cfg(feature = "experimental")]
+mod experimental {
+    use std::{thread, time::Duration};
 
-        // Create a listener.
-        let listener = smol::Async::<TcpListener>::bind(([0, 0, 0, 0], 8081))?;
+    use embedded_svc::{
+        mqtt::client::{Publish, QoS},
+        sys_time::SystemTime,
+        timer::{Once, Periodic, Timer},
+    };
+    use log::info;
 
-        // Accept clients in a loop.
-        loop {
-            let (stream, peer_addr) = listener.accept().await?;
-            info!("Accepted client: {}", peer_addr);
+    use anyhow::Result;
 
-            // Spawn a task that echoes messages from the client back to it.
-            smol::spawn(echo(stream)).detach();
+    use esp_idf_svc::{
+        eventloop::{
+            BackgroundLoopConfiguration, EspBackgroundEventLoop, EspBackgroundSubscription,
+            EspEventFetchData, EspEventPostData, EspEventSubscribeMetadata,
+        },
+        mqtt::client::EspMqttClient,
+        systime::EspSystemTime,
+        timer::{EspOnce, EspPeriodic, EspPeriodicTimer},
+    };
+
+    use esp_idf_sys::c_types;
+
+    pub fn test() -> Result<(EspPeriodicTimer, EspBackgroundSubscription)> {
+        #[cfg(not(esp_idf_version = "4.3"))]
+        test_tcp_bind_async()?;
+
+        test_https_client()?;
+
+        let (eventloop, subscription) = test_eventloop()?;
+
+        let mqtt_client = test_mqtt_client()?;
+
+        let timer = test_timer(eventloop, mqtt_client)?;
+
+        Ok((timer, subscription))
+    }
+
+    fn test_timer(
+        mut eventloop: EspBackgroundEventLoop,
+        mut client: EspMqttClient,
+    ) -> Result<EspPeriodicTimer> {
+        use embedded_svc::event_bus::Postbox;
+
+        info!("About to schedule a one-shot timer for after 2 seconds");
+        let mut once_timer = EspOnce::new()?.after(Duration::from_secs(2), || {
+            info!("One-shot timer triggered");
+
+            Result::<_, anyhow::Error>::Ok(())
+        })?;
+
+        once_timer.start()?;
+
+        thread::sleep(Duration::from_secs(3));
+
+        info!("About to schedule a periodic timer every five seconds");
+        let mut periodic_timer = EspPeriodic::new()?.every(Duration::from_secs(5), move || {
+            info!("Tick from periodic timer");
+
+            let now = EspSystemTime {}.now();
+
+            eventloop.post(EventLoopMessage::new(now), None)?;
+
+            client.publish(
+                "rust-esp32-std-demo",
+                QoS::AtMostOnce,
+                false,
+                format!("Now is {:?}", now).as_bytes(),
+            )?;
+
+            Result::<_, anyhow::Error>::Ok(())
+        })?;
+
+        periodic_timer.start()?;
+
+        Ok(periodic_timer)
+    }
+
+    #[derive(Copy, Clone, Debug)]
+    struct EventLoopMessage(Duration);
+
+    impl EventLoopMessage {
+        const SERVICE: &'static [u8] = b"DEMO-SERVICE\0";
+
+        pub fn new(duration: Duration) -> Self {
+            Self(duration)
         }
     }
 
-    info!("About to bind a simple echo service to port 8081 using async (smol-rs)!");
+    impl From<EspEventFetchData> for EventLoopMessage {
+        fn from(fetch: EspEventFetchData) -> Self {
+            unsafe { fetch.as_payload::<EventLoopMessage>() }
+        }
+    }
 
-    esp_idf_sys::esp!(unsafe {
-        esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
-            max_fds: 5,
+    impl<'a> From<&'a EventLoopMessage> for EspEventPostData<'a> {
+        fn from(message: &'a EventLoopMessage) -> EspEventPostData<'a> {
+            unsafe { EspEventPostData::new(EventLoopMessage::source(), 0, message) }
+        }
+    }
+
+    impl EspEventSubscribeMetadata for EventLoopMessage {
+        fn source() -> *const c_types::c_char {
+            Self::SERVICE.as_ptr() as *const _
+        }
+    }
+
+    fn test_eventloop() -> Result<(EspBackgroundEventLoop, EspBackgroundSubscription)> {
+        use embedded_svc::event_bus::EventBus;
+
+        info!("About to start a background event loop");
+        let mut eventloop = EspBackgroundEventLoop::new(&Default::default())?;
+
+        info!("About to subscribe to the background event loop");
+        let subscription = eventloop.subscribe(|message: &EventLoopMessage| {
+            info!("Got message from the event loop: {:?}", message.0);
+
+            Result::<_, anyhow::Error>::Ok(())
+        })?;
+
+        Ok((eventloop, subscription))
+    }
+
+    #[cfg(not(esp_idf_version = "4.3"))]
+    fn test_tcp_bind_async() -> anyhow::Result<()> {
+        async fn test_tcp_bind() -> smol::io::Result<()> {
+            /// Echoes messages from the client back to it.
+            async fn echo(stream: smol::Async<TcpStream>) -> smol::io::Result<()> {
+                smol::io::copy(&stream, &mut &stream).await?;
+                Ok(())
+            }
+
+            // Create a listener.
+            let listener = smol::Async::<TcpListener>::bind(([0, 0, 0, 0], 8081))?;
+
+            // Accept clients in a loop.
+            loop {
+                let (stream, peer_addr) = listener.accept().await?;
+                info!("Accepted client: {}", peer_addr);
+
+                // Spawn a task that echoes messages from the client back to it.
+                smol::spawn(echo(stream)).detach();
+            }
+        }
+
+        info!("About to bind a simple echo service to port 8081 using async (smol-rs)!");
+
+        esp_idf_sys::esp!(unsafe {
+            esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
+                max_fds: 5,
+                ..Default::default()
+            })
+        })?;
+
+        thread::Builder::new().stack_size(4096).spawn(move || {
+            smol::block_on(test_tcp_bind()).unwrap();
+        })?;
+
+        Ok(())
+    }
+
+    fn test_https_client() -> Result<()> {
+        use embedded_svc::http::{self, client::*, status, Headers, Status};
+        use embedded_svc::io::Bytes;
+        use esp_idf_svc::http::client::*;
+
+        let url = String::from("https://google.com");
+
+        info!("About to fetch content from {}", url);
+
+        let mut client = EspHttpClient::new_default()?;
+
+        let response = client.get(&url)?.submit()?;
+
+        let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).take(3084).collect();
+
+        let body = body?;
+
+        info!(
+            "Body (truncated to 3K):\n{:?}",
+            String::from_utf8_lossy(&body).into_owned()
+        );
+
+        Ok(())
+    }
+
+    fn test_mqtt_client() -> Result<esp_idf_svc::mqtt::client::EspMqttClient> {
+        use embedded_svc::mqtt::client::{Client, Connection, Publish, QoS};
+        use esp_idf_svc::mqtt::client::{EspMqttClient, MqttClientConfiguration};
+
+        info!("About to start MQTT client");
+
+        let conf = MqttClientConfiguration {
+            client_id: Some("rust-esp32-std-demo"),
             ..Default::default()
-        })
-    })?;
+        };
 
-    thread::Builder::new().stack_size(4096).spawn(move || {
-        smol::block_on(test_tcp_bind()).unwrap();
-    })?;
+        let (mut client, mut connection) = EspMqttClient::new("mqtt://broker.emqx.io:1883", &conf)?;
 
-    Ok(())
-}
+        info!("MQTT client started");
 
-#[cfg(feature = "experimental")]
-fn test_https_client() -> Result<()> {
-    use embedded_svc::http::{self, client::*, status, Headers, Status};
-    use embedded_svc::io::Bytes;
-    use esp_idf_svc::http::client::*;
+        // Need to immediately start pumping the connection for messages, or else subscribe() and publish() below will not work
+        // Note that when using the alternative constructor - `EspMqttClient::new_with_callback` - you don't need to
+        // spawn a new thread, as the messages will be pumped with a backpressure into the callback you provide.
+        // Yet, you still need to efficiently process each message in the callback without blocking for too long.
+        //
+        // Note also that if you go to http://tools.emqx.io/ and then connect and send a message to topic
+        // "rust-esp32-std-demo", the client configured here should receive it.
+        thread::spawn(move || {
+            info!("MQTT Listening for messages");
 
-    let url = String::from("https://google.com");
+            while let Some(msg) = connection.next() {
+                match msg {
+                    Err(e) => info!("MQTT Message ERROR: {}", e),
+                    Ok(msg) => info!("MQTT Message: {:?}", msg),
+                }
+            }
 
-    info!("About to fetch content from {}", url);
+            info!("MQTT connection loop exit");
+        });
 
-    let mut client = EspHttpClient::new_default()?;
+        client.subscribe("rust-esp32-std-demo", QoS::AtMostOnce)?;
 
-    let response = client.get(&url)?.submit()?;
+        info!("Subscribed to all topics (rust-esp32-std-demo)");
 
-    let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).take(3084).collect();
+        client.publish(
+            "rust-esp32-std-demo",
+            QoS::AtMostOnce,
+            false,
+            "Hello from rust-esp32-std-demo!".as_bytes(),
+        )?;
 
-    let body = body?;
+        info!("Published a hello message to topic \"rust-esp32-std-demo\"");
 
-    info!(
-        "Body (truncated to 3K):\n{:?}",
-        String::from_utf8_lossy(&body).into_owned()
-    );
-
-    Ok(())
+        Ok(client)
+    }
 }
 
 #[cfg(feature = "ttgo")]
