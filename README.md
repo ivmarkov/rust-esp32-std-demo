@@ -24,6 +24,7 @@ Highlights:
 - Install the [Rust Espressif compiler toolchain and the Espressif LLVM Clang toolchain](https://github.com/esp-rs/rust-build)
   - This is necessary, because support for the Xtensa architecture (ESP32 / ESP32-S2 / ESP32-S3) is not upstreamed in LLVM yet
 - Switch to the `esp` toolchain from the pre-built binaries: `rustup default esp`
+  - (You can also skip this step and switch to the `esp` toolchain *for the demo crate only* by executing `rustup override set esp` inside the `rust-esp32-std-demo` directory once you have cloned the demo as per below)
   - **NOTE** For ESP32-C3 - which runs a RiscV32 chip - you can just use the stock nightly Rust compiler, and a recent, stock Clang (as in Clang 11+)
   - (You can do this by issuing `rustup install nightly` and then `rustup default nightly` instead of installing/building the Rust & Clang ESP forks and switching to their `esp` toolchain as advised above)
 - If using the custom Espressif Clang, make sure that you DON'T have a system Clang installed as well, because even if you have the Espressif one first on your `$PATH`, Bindgen will still pick the system one
