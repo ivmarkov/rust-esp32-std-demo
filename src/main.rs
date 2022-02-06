@@ -535,7 +535,7 @@ mod experimental {
     use esp_idf_svc::{
         eventloop::{
             BackgroundLoopConfiguration, EspBackgroundEventLoop, EspBackgroundSubscription,
-            EspEventFetchData, EspEventPostData, EspEventSubscribeMetadata,
+            EspEventFetchData, EspEventPostData, EspTypedEventSerDe,
         },
         mqtt::client::EspMqttClient,
         systime::EspSystemTime,
@@ -582,7 +582,7 @@ mod experimental {
 
             let now = EspSystemTime {}.now();
 
-            eventloop.post(EventLoopMessage::new(now), None)?;
+            eventloop.post(&EventLoopMessage::new(now), None)?;
 
             client.publish(
                 "rust-esp32-std-demo",
@@ -603,28 +603,28 @@ mod experimental {
     struct EventLoopMessage(Duration);
 
     impl EventLoopMessage {
-        const SERVICE: &'static [u8] = b"DEMO-SERVICE\0";
-
         pub fn new(duration: Duration) -> Self {
             Self(duration)
         }
     }
 
-    impl From<EspEventFetchData> for EventLoopMessage {
-        fn from(fetch: EspEventFetchData) -> Self {
-            unsafe { fetch.as_payload::<EventLoopMessage>() }
-        }
-    }
-
-    impl<'a> From<&'a EventLoopMessage> for EspEventPostData<'a> {
-        fn from(message: &'a EventLoopMessage) -> EspEventPostData<'a> {
-            unsafe { EspEventPostData::new(EventLoopMessage::source(), 0, message) }
-        }
-    }
-
-    impl EspEventSubscribeMetadata for EventLoopMessage {
+    impl EspTypedEventSerDe<EventLoopMessage> for EventLoopMessage {
         fn source() -> *const c_types::c_char {
-            Self::SERVICE.as_ptr() as *const _
+            b"DEMO-SERVICE\0".as_ptr() as *const _
+        }
+
+        fn serialize<R>(
+            event: &EventLoopMessage,
+            f: impl for<'a> FnOnce(&'a EspEventPostData) -> R,
+        ) -> R {
+            f(&unsafe { EspEventPostData::new(Self::source(), Self::event_id(), event) })
+        }
+
+        fn deserialize<R>(
+            data: &EspEventFetchData,
+            f: &mut impl for<'a> FnMut(&'a EventLoopMessage) -> R,
+        ) -> R {
+            f(unsafe { data.as_payload() })
         }
     }
 
