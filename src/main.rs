@@ -30,8 +30,7 @@ use std::sync::{Condvar, Mutex};
 use std::{cell::RefCell, env, sync::atomic::*, sync::Arc, thread, time::*};
 
 use anyhow::bail;
-use embedded_svc::sys_time::SystemTime;
-use esp_idf_svc::systime::EspSystemTime;
+
 use log::*;
 
 use url;
@@ -48,18 +47,26 @@ use embedded_svc::httpd::registry::*;
 use embedded_svc::httpd::*;
 use embedded_svc::io;
 use embedded_svc::ipv4;
+use embedded_svc::mqtt::client::{Publish, QoS};
 use embedded_svc::ping::Ping;
-use embedded_svc::utils::anyerror::*;
+use embedded_svc::sys_time::SystemTime;
+use embedded_svc::timer::TimerService;
+use embedded_svc::timer::*;
 use embedded_svc::wifi::*;
 
 use esp_idf_svc::eth::*;
+use esp_idf_svc::eventloop::*;
+use esp_idf_svc::eventloop::*;
 use esp_idf_svc::httpd as idf;
 use esp_idf_svc::httpd::ServerRegistry;
+use esp_idf_svc::mqtt::client::*;
 use esp_idf_svc::netif::*;
 use esp_idf_svc::nvs::*;
 use esp_idf_svc::ping;
 use esp_idf_svc::sntp;
 use esp_idf_svc::sysloop::*;
+use esp_idf_svc::systime::EspSystemTime;
+use esp_idf_svc::timer::*;
 use esp_idf_svc::wifi::*;
 
 use esp_idf_hal::adc;
@@ -263,8 +270,14 @@ fn main() -> Result<()> {
     let _sntp = sntp::EspSntp::new_default()?;
     info!("SNTP initialized");
 
+    let (eventloop, _subscription) = test_eventloop()?;
+
+    let mqtt_client = test_mqtt_client()?;
+
+    let _timer = test_timer(eventloop, mqtt_client)?;
+
     #[cfg(feature = "experimental")]
-    let _experiments = experimental::test()?;
+    experimental::test()?;
 
     #[cfg(not(feature = "qemu"))]
     #[cfg(esp_idf_config_lwip_ipv4_napt)]
@@ -519,129 +532,155 @@ fn test_tcp_bind() -> Result<()> {
     Ok(())
 }
 
+fn test_timer(
+    mut eventloop: EspBackgroundEventLoop,
+    mut client: EspMqttClient,
+) -> Result<EspTimer> {
+    use embedded_svc::event_bus::Postbox;
+
+    info!("About to schedule a one-shot timer for after 2 seconds");
+    let mut once_timer = EspTimerService::new()?.timer(|| {
+        info!("One-shot timer triggered");
+    })?;
+
+    once_timer.after(Duration::from_secs(2))?;
+
+    thread::sleep(Duration::from_secs(3));
+
+    info!("About to schedule a periodic timer every five seconds");
+    let mut periodic_timer = EspTimerService::new()?.timer(move || {
+        info!("Tick from periodic timer");
+
+        let now = EspSystemTime {}.now();
+
+        eventloop.post(&EventLoopMessage::new(now), None).unwrap();
+
+        client
+            .publish(
+                "rust-esp32-std-demo",
+                QoS::AtMostOnce,
+                false,
+                format!("Now is {:?}", now).as_bytes(),
+            )
+            .unwrap();
+    })?;
+
+    periodic_timer.every(Duration::from_secs(5))?;
+
+    Ok(periodic_timer)
+}
+
+#[derive(Copy, Clone, Debug)]
+struct EventLoopMessage(Duration);
+
+impl EventLoopMessage {
+    pub fn new(duration: Duration) -> Self {
+        Self(duration)
+    }
+}
+
+impl EspTypedEventSource for EventLoopMessage {
+    fn source() -> *const c_types::c_char {
+        b"DEMO-SERVICE\0".as_ptr() as *const _
+    }
+}
+
+impl EspTypedEventSerializer<EventLoopMessage> for EventLoopMessage {
+    fn serialize<R>(
+        event: &EventLoopMessage,
+        f: impl for<'a> FnOnce(&'a EspEventPostData) -> R,
+    ) -> R {
+        f(&unsafe { EspEventPostData::new(Self::source(), Self::event_id(), event) })
+    }
+}
+
+impl EspTypedEventDeserializer<EventLoopMessage> for EventLoopMessage {
+    fn deserialize<R>(
+        data: &EspEventFetchData,
+        f: &mut impl for<'a> FnMut(&'a EventLoopMessage) -> R,
+    ) -> R {
+        f(unsafe { data.as_payload() })
+    }
+}
+
+fn test_eventloop() -> Result<(EspBackgroundEventLoop, EspBackgroundSubscription)> {
+    use embedded_svc::event_bus::EventBus;
+
+    info!("About to start a background event loop");
+    let mut eventloop = EspBackgroundEventLoop::new(&Default::default())?;
+
+    info!("About to subscribe to the background event loop");
+    let subscription = eventloop.subscribe(|message: &EventLoopMessage| {
+        info!("Got message from the event loop: {:?}", message.0);
+    })?;
+
+    Ok((eventloop, subscription))
+}
+
+fn test_mqtt_client() -> Result<esp_idf_svc::mqtt::client::EspMqttClient> {
+    use embedded_svc::mqtt::client::{Client, Connection, Publish, QoS};
+    use esp_idf_svc::mqtt::client::{EspMqttClient, MqttClientConfiguration};
+
+    info!("About to start MQTT client");
+
+    let conf = MqttClientConfiguration {
+        client_id: Some("rust-esp32-std-demo"),
+        ..Default::default()
+    };
+
+    let (mut client, mut connection) = EspMqttClient::new("mqtt://broker.emqx.io:1883", &conf)?;
+
+    info!("MQTT client started");
+
+    // Need to immediately start pumping the connection for messages, or else subscribe() and publish() below will not work
+    // Note that when using the alternative constructor - `EspMqttClient::new_with_callback` - you don't need to
+    // spawn a new thread, as the messages will be pumped with a backpressure into the callback you provide.
+    // Yet, you still need to efficiently process each message in the callback without blocking for too long.
+    //
+    // Note also that if you go to http://tools.emqx.io/ and then connect and send a message to topic
+    // "rust-esp32-std-demo", the client configured here should receive it.
+    thread::spawn(move || {
+        info!("MQTT Listening for messages");
+
+        while let Some(msg) = connection.next() {
+            match msg {
+                Err(e) => info!("MQTT Message ERROR: {}", e),
+                Ok(msg) => info!("MQTT Message: {:?}", msg),
+            }
+        }
+
+        info!("MQTT connection loop exit");
+    });
+
+    client.subscribe("rust-esp32-std-demo", QoS::AtMostOnce)?;
+
+    info!("Subscribed to all topics (rust-esp32-std-demo)");
+
+    client.publish(
+        "rust-esp32-std-demo",
+        QoS::AtMostOnce,
+        false,
+        "Hello from rust-esp32-std-demo!".as_bytes(),
+    )?;
+
+    info!("Published a hello message to topic \"rust-esp32-std-demo\"");
+
+    Ok(client)
+}
+
 #[cfg(feature = "experimental")]
 mod experimental {
-    use std::{thread, time::Duration};
-
-    use embedded_svc::{
-        mqtt::client::{Publish, QoS},
-        sys_time::SystemTime,
-        timer::{Once, Periodic, Timer},
-    };
     use log::info;
-
-    use anyhow::Result;
-
-    use esp_idf_svc::{
-        eventloop::{
-            BackgroundLoopConfiguration, EspBackgroundEventLoop, EspBackgroundSubscription,
-            EspEventFetchData, EspEventPostData, EspTypedEventSerDe,
-        },
-        mqtt::client::EspMqttClient,
-        systime::EspSystemTime,
-        timer::{EspOnce, EspPeriodic, EspPeriodicTimer},
-    };
 
     use esp_idf_sys::c_types;
 
-    pub fn test() -> Result<(EspPeriodicTimer, EspBackgroundSubscription)> {
+    pub fn test() -> anyhow::Result<()> {
         #[cfg(not(esp_idf_version = "4.3"))]
         test_tcp_bind_async()?;
 
         test_https_client()?;
 
-        let (eventloop, subscription) = test_eventloop()?;
-
-        let mqtt_client = test_mqtt_client()?;
-
-        let timer = test_timer(eventloop, mqtt_client)?;
-
-        Ok((timer, subscription))
-    }
-
-    fn test_timer(
-        mut eventloop: EspBackgroundEventLoop,
-        mut client: EspMqttClient,
-    ) -> Result<EspPeriodicTimer> {
-        use embedded_svc::event_bus::Postbox;
-
-        info!("About to schedule a one-shot timer for after 2 seconds");
-        let mut once_timer = EspOnce::new()?.after(Duration::from_secs(2), || {
-            info!("One-shot timer triggered");
-
-            Result::<_, anyhow::Error>::Ok(())
-        })?;
-
-        once_timer.start()?;
-
-        thread::sleep(Duration::from_secs(3));
-
-        info!("About to schedule a periodic timer every five seconds");
-        let mut periodic_timer = EspPeriodic::new()?.every(Duration::from_secs(5), move || {
-            info!("Tick from periodic timer");
-
-            let now = EspSystemTime {}.now();
-
-            eventloop.post(&EventLoopMessage::new(now), None)?;
-
-            client.publish(
-                "rust-esp32-std-demo",
-                QoS::AtMostOnce,
-                false,
-                format!("Now is {:?}", now).as_bytes(),
-            )?;
-
-            Result::<_, anyhow::Error>::Ok(())
-        })?;
-
-        periodic_timer.start()?;
-
-        Ok(periodic_timer)
-    }
-
-    #[derive(Copy, Clone, Debug)]
-    struct EventLoopMessage(Duration);
-
-    impl EventLoopMessage {
-        pub fn new(duration: Duration) -> Self {
-            Self(duration)
-        }
-    }
-
-    impl EspTypedEventSerDe<EventLoopMessage> for EventLoopMessage {
-        fn source() -> *const c_types::c_char {
-            b"DEMO-SERVICE\0".as_ptr() as *const _
-        }
-
-        fn serialize<R>(
-            event: &EventLoopMessage,
-            f: impl for<'a> FnOnce(&'a EspEventPostData) -> R,
-        ) -> R {
-            f(&unsafe { EspEventPostData::new(Self::source(), Self::event_id(), event) })
-        }
-
-        fn deserialize<R>(
-            data: &EspEventFetchData,
-            f: &mut impl for<'a> FnMut(&'a EventLoopMessage) -> R,
-        ) -> R {
-            f(unsafe { data.as_payload() })
-        }
-    }
-
-    fn test_eventloop() -> Result<(EspBackgroundEventLoop, EspBackgroundSubscription)> {
-        use embedded_svc::event_bus::EventBus;
-
-        info!("About to start a background event loop");
-        let mut eventloop = EspBackgroundEventLoop::new(&Default::default())?;
-
-        info!("About to subscribe to the background event loop");
-        let subscription = eventloop.subscribe(|message: &EventLoopMessage| {
-            info!("Got message from the event loop: {:?}", message.0);
-
-            Result::<_, anyhow::Error>::Ok(())
-        })?;
-
-        Ok((eventloop, subscription))
+        Ok(())
     }
 
     #[cfg(not(esp_idf_version = "4.3"))]
@@ -682,7 +721,7 @@ mod experimental {
         Ok(())
     }
 
-    fn test_https_client() -> Result<()> {
+    fn test_https_client() -> anyhow::Result<()> {
         use embedded_svc::http::{self, client::*, status, Headers, Status};
         use embedded_svc::io::Bytes;
         use esp_idf_svc::http::client::*;
@@ -705,57 +744,6 @@ mod experimental {
         );
 
         Ok(())
-    }
-
-    fn test_mqtt_client() -> Result<esp_idf_svc::mqtt::client::EspMqttClient> {
-        use embedded_svc::mqtt::client::{Client, Connection, Publish, QoS};
-        use esp_idf_svc::mqtt::client::{EspMqttClient, MqttClientConfiguration};
-
-        info!("About to start MQTT client");
-
-        let conf = MqttClientConfiguration {
-            client_id: Some("rust-esp32-std-demo"),
-            ..Default::default()
-        };
-
-        let (mut client, mut connection) = EspMqttClient::new("mqtt://broker.emqx.io:1883", &conf)?;
-
-        info!("MQTT client started");
-
-        // Need to immediately start pumping the connection for messages, or else subscribe() and publish() below will not work
-        // Note that when using the alternative constructor - `EspMqttClient::new_with_callback` - you don't need to
-        // spawn a new thread, as the messages will be pumped with a backpressure into the callback you provide.
-        // Yet, you still need to efficiently process each message in the callback without blocking for too long.
-        //
-        // Note also that if you go to http://tools.emqx.io/ and then connect and send a message to topic
-        // "rust-esp32-std-demo", the client configured here should receive it.
-        thread::spawn(move || {
-            info!("MQTT Listening for messages");
-
-            while let Some(msg) = connection.next() {
-                match msg {
-                    Err(e) => info!("MQTT Message ERROR: {}", e),
-                    Ok(msg) => info!("MQTT Message: {:?}", msg),
-                }
-            }
-
-            info!("MQTT connection loop exit");
-        });
-
-        client.subscribe("rust-esp32-std-demo", QoS::AtMostOnce)?;
-
-        info!("Subscribed to all topics (rust-esp32-std-demo)");
-
-        client.publish(
-            "rust-esp32-std-demo",
-            QoS::AtMostOnce,
-            false,
-            "Hello from rust-esp32-std-demo!".as_bytes(),
-        )?;
-
-        info!("Published a hello message to topic \"rust-esp32-std-demo\"");
-
-        Ok(client)
     }
 }
 
@@ -798,16 +786,18 @@ fn ttgo_hello_world(
         320,
     );
 
-    AnyError::<st7789::Error<_>>::wrap(|| {
-        display.init(&mut delay::Ets)?;
-        display.set_orientation(st7789::Orientation::Portrait)?;
+    display
+        .init(&mut delay::Ets)
+        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+    display
+        .set_orientation(st7789::Orientation::Portrait)
+        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
 
-        // The TTGO board's screen does not start at offset 0x0, and the physical size is 135x240, instead of 240x320
-        let top_left = Point::new(52, 40);
-        let size = Size::new(135, 240);
+    // The TTGO board's screen does not start at offset 0x0, and the physical size is 135x240, instead of 240x320
+    let top_left = Point::new(52, 40);
+    let size = Size::new(135, 240);
 
-        led_draw(&mut display.cropped(&Rectangle::new(top_left, size)))
-    })
+    led_draw(&mut display.cropped(&Rectangle::new(top_left, size)))
 }
 
 #[cfg(feature = "kaluga")]
@@ -849,26 +839,26 @@ fn kaluga_hello_world(
     let reset = rst.into_output()?;
 
     if ili9341 {
-        AnyError::<ili9341::DisplayError>::wrap(|| {
-            let mut display = ili9341::Ili9341::new(
-                di,
-                reset,
-                &mut delay::Ets,
-                KalugaOrientation::Landscape,
-                ili9341::DisplaySize240x320,
-            )?;
+        let mut display = ili9341::Ili9341::new(
+            di,
+            reset,
+            &mut delay::Ets,
+            KalugaOrientation::Landscape,
+            ili9341::DisplaySize240x320,
+        )?;
 
-            led_draw(&mut display)
-        })
+        led_draw(&mut display)
     } else {
         let mut display = st7789::ST7789::new(di, reset, 320, 240);
 
-        AnyError::<st7789::Error<_>>::wrap(|| {
-            display.init(&mut delay::Ets)?;
-            display.set_orientation(st7789::Orientation::Landscape)?;
+        display
+            .init(&mut delay::Ets)
+            .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+        display
+            .set_orientation(st7789::Orientation::Landscape)
+            .map_err(|e| anyhow::message("Display error: {:?}", e))?;
 
-            led_draw(&mut display)
-        })
+        led_draw(&mut display)
     }
 }
 
@@ -907,13 +897,17 @@ fn heltec_hello_world(
     )
     .into_buffered_graphics_mode();
 
-    AnyError::<display_interface::DisplayError>::wrap(|| {
-        display.init()?;
+    display
+        .init()
+        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
 
-        led_draw(&mut display)?;
+    led_draw(&mut display)?;
 
-        display.flush()
-    })
+    display
+        .flush()
+        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+
+    Ok(())
 }
 
 #[cfg(feature = "ssd1306g_spi")]
@@ -961,13 +955,17 @@ fn ssd1306g_hello_world_spi(
     )
     .into_buffered_graphics_mode();
 
-    AnyError::<display_interface::DisplayError>::wrap(|| {
-        display.init()?;
+    display
+        .init()
+        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
 
-        led_draw(&mut display)?;
+    led_draw(&mut display)?;
 
-        display.flush()
-    })
+    display
+        .flush()
+        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+
+    Ok(())
 }
 
 #[cfg(feature = "ssd1306g")]
@@ -1005,13 +1003,15 @@ fn ssd1306g_hello_world(
     )
     .into_buffered_graphics_mode();
 
-    AnyError::<display_interface::DisplayError>::wrap(|| {
-        display.init()?;
+    display
+        .init()
+        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
 
-        led_draw(&mut display)?;
+    led_draw(&mut display)?;
 
-        display.flush()
-    })?;
+    display
+        .flush()
+        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
 
     Ok(power)
 }
@@ -1051,12 +1051,14 @@ fn esp32s3_usb_otg_hello_world(
 
     let mut display = st7789::ST7789::new(di, reset, 240, 240);
 
-    AnyError::<st7789::Error<_>>::wrap(|| {
-        display.init(&mut delay::Ets)?;
-        display.set_orientation(st7789::Orientation::Landscape)?;
+    display
+        .init(&mut delay::Ets)
+        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+    display
+        .set_orientation(st7789::Orientation::Landscape)
+        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
 
-        led_draw(&mut display)
-    })
+    led_draw(&mut display)
 }
 
 #[allow(dead_code)]
@@ -1239,6 +1241,9 @@ fn wifi(
 
     info!("Wifi configuration set, about to get status");
 
+    wifi.wait_status_with_timeout(Duration::from_secs(20), |status| !status.is_transitional())
+        .map_err(|e| anyhow::anyhow!("Unexpected Wifi status: {:?}", e))?;
+
     let status = wifi.get_status();
 
     if let Status(
@@ -1263,6 +1268,9 @@ fn eth_configure<HW>(mut eth: Box<EspEth<HW>>) -> Result<Box<EspEth<HW>>> {
     eth.set_configuration(&eth::Configuration::Client(Default::default()))?;
 
     info!("Eth configuration set, about to get status");
+
+    wifi.wait_status_with_timeout(Duration::from_secs(10), |status| !status.is_transitional())
+        .map_err(|e| anyhow::anyhow!("Unexpected Eth status: {:?}", e))?;
 
     let status = eth.get_status();
 
