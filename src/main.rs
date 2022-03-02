@@ -670,6 +670,7 @@ fn test_mqtt_client() -> Result<esp_idf_svc::mqtt::client::EspMqttClient> {
 
 #[cfg(feature = "experimental")]
 mod experimental {
+    use super::{thread, TcpListener, TcpStream};
     use log::info;
 
     use esp_idf_sys::c_types;
