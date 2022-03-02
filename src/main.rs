@@ -42,7 +42,7 @@ use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::digital::v2::OutputPin;
 
 use embedded_svc::eth;
-use embedded_svc::eth::Eth;
+use embedded_svc::eth::{Eth, TransitionalState};
 use embedded_svc::httpd::registry::*;
 use embedded_svc::httpd::*;
 use embedded_svc::io;
@@ -670,6 +670,7 @@ fn test_mqtt_client() -> Result<esp_idf_svc::mqtt::client::EspMqttClient> {
 
 #[cfg(feature = "experimental")]
 mod experimental {
+    use super::{thread, TcpListener, TcpStream};
     use log::info;
 
     use esp_idf_sys::c_types;
@@ -1269,7 +1270,7 @@ fn eth_configure<HW>(mut eth: Box<EspEth<HW>>) -> Result<Box<EspEth<HW>>> {
 
     info!("Eth configuration set, about to get status");
 
-    wifi.wait_status_with_timeout(Duration::from_secs(10), |status| !status.is_transitional())
+    eth.wait_status_with_timeout(Duration::from_secs(10), |status| !status.is_transitional())
         .map_err(|e| anyhow::anyhow!("Unexpected Eth status: {:?}", e))?;
 
     let status = eth.get_status();
