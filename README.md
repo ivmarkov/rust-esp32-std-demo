@@ -53,8 +53,8 @@ Highlights:
 - Rather than flashing on the chip, you can now run the demo in QEMU:
   - Clone and then build [the Espressif fork of QEMU](https://github.com/espressif/qemu) by following the [build instructions](https://github.com/espressif/qemu/wiki)
   - Install the [esptool.py](https://github.com/espressif/esptool) utility
-  - Build the app with `export ESP_IDF_VERSION=master; cargo build --features native,qemu`
-  - NOTE: Only ESP32 is supported for the moment, so make sure that the `xtensa-esp32-espidf` target (the default one) is active in your `.cargo/config.toml` file (or override with `export ESP_IDF_VERSION=master; cargo build --features native,qemu --target xtensa-esp32-espidf`)
+  - QEMU ethernet driver seems to only work on ESP-IDF 4.4+, so build the app with `export ESP_IDF_VERSION=release/v4.4; cargo build --features native,qemu` or with `export ESP_IDF_VERSION=master; cargo build --features native,qemu` 
+  - NOTE: Only ESP32 is supported for the moment, so make sure that the `xtensa-esp32-espidf` target (the default one) is active in your `.cargo/config.toml` file (or override with `export ESP_IDF_VERSION=release/v4.4; cargo build --features native,qemu --target xtensa-esp32-espidf`)
   - Run it in QEMU by typing `./qemu.sh`. NOTE: You might have to change the `ESP_QEMU_PATH` in that script to point to the `build` subdirectory of your QEMU Espressif clone
 
 ## Flash
