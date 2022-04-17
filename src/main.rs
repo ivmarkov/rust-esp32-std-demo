@@ -708,12 +708,15 @@ mod experimental {
 
         info!("About to bind a simple echo service to port 8081 using async (smol-rs)!");
 
-        esp_idf_sys::esp!(unsafe {
-            esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
-                max_fds: 5,
-                ..Default::default()
-            })
-        })?;
+        #[allow(clippy::needless_update)]
+        {
+            esp_idf_sys::esp!(unsafe {
+                esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
+                    max_fds: 5,
+                    ..Default::default()
+                })
+            })?;
+        }
 
         thread::Builder::new().stack_size(4096).spawn(move || {
             smol::block_on(test_tcp_bind()).unwrap();
