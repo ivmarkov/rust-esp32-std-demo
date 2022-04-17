@@ -37,15 +37,14 @@ Highlights:
   - `export RUST_ESP32_STD_DEMO_WIFI_PASS=<ssid>`
 - To configure the demo for your particular board, please uncomment the relevant [Rust target for your board](https://github.com/ivmarkov/rust-esp32-std-demo/blob/main/.cargo/config.toml#L2) and comment the others. Alternatively, just append the `--target <target>` flag to all `cargo build` lines below.
 - Build: `cargo build` or `cargo build --release`
-  - If you would like to see the async networking in action, use the following build command instead: `export ESP_IDF_VERSION=master; cargo build --features native`
   - (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Add `ttgo` to the `--features` build flags above (as in `cargo build --features ttgo`) to be greeted with a `Hello Rust!` message on the board's LED screen
   - (Only if you happen to have a [Waveshare board](https://www.waveshare.com/wiki/E-Paper_ESP32_Driver_Board) and a [waveshare 4.2" e-paper screen](https://www.waveshare.com/wiki/4.2inch_e-Paper_Module)): Add `waveshare_epd` to the `--features` build flags above (as in `cargo build --features waveshare_epd`) to be greeted with a `Hello Rust!` message on the e-paper screen
   - (Only if you happen to have an [ESP32-S2-Kaluga-1 board](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit.html)): Add `kaluga` to the `--features` build flags above (as in `cargo build --features kaluga`) to be greeted with a `Hello Rust!` message on the board's LED screen
   - (Only if you happen to have a [Heltec LoRa 32 board](https://heltec.org/project/wifi-lora-32/)): Add `heltec` to the `--features` build flags above (as in `cargo build --features heltec`) to be greeted with a `Hello Rust!` message on the board's LED screen
-  - (Only if you happen to have an [ESP32-S3-USB-OTG](https://www.espressif.com/en/products/devkits)): Build with `native` and the ESP-IDF master branch and add `esp32s3_usb_otg` to the `--features` build flags above (as in `export ESP_IDF_VERSION=master; cargo build --features native,esp32s3_usb_otg`) to be greeted with a `Hello Rust!` message on the board's LED screen
-  - (Only if you happen to have an [Ethernet-to-SPI board based on the W5500 chip](https://www.wiznet.io/product-item/w5500/)): Build with `native` and the ESP-IDF master branch and add `w5500` to the `--features` build flags above (as in `export ESP_IDF_VERSION=master; cargo build --features native,w5500`) to have Ethernet connectivity as part of the demo
+  - (Only if you happen to have an [ESP32-S3-USB-OTG](https://www.espressif.com/en/products/devkits)): Add `esp32s3_usb_otg` to the `--features` build flags above (as in `cargo build --features esp32s3_usb_otg`) to be greeted with a `Hello Rust!` message on the board's LED screen
+  - (Only if you happen to have an [Ethernet-to-SPI board based on the W5500 chip](https://www.wiznet.io/product-item/w5500/)): Add `w5500` to the `--features` build flags above (as in `cargo build --features w5500`) to have Ethernet connectivity as part of the demo
     - Note that other Ethernet-to-SPI boards might work just fine as well, but you'll have to change the chip from `SpiEthDriver::W5500` to whatever chip your SPI board is using, in the demo code itself.
-  - (Only if you happen to have an [ESP32 board with an onboard IP101 LAN chip and/or a stock ESP32 board connected to an IP101 Ethernet board via RMII](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/hw-reference/esp32/get-started-ethernet-kit.html)): Build with `native` and the ESP-IDF master branch and add `ip101` to the `--features` build flags above (as in `export ESP_IDF_VERSION=master; cargo build --features native,ip101`) to have Ethernet connectivity as part of the demo
+  - (Only if you happen to have an [ESP32 board with an onboard IP101 LAN chip and/or a stock ESP32 board connected to an IP101 Ethernet board via RMII](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/hw-reference/esp32/get-started-ethernet-kit.html)): Add `ip101` to the `--features` build flags above (as in `cargo build --features ip101`) to have Ethernet connectivity as part of the demo
     - Note that other RMII Ethernet boards might work just fine as well, but you'll have to change the chip from `RmiiEthDriver::IP101` to whatever chip your board is using, in the demo code itself.
 - (Only if you happen to have an ESP32-S2 board and can connect a LED to GPIO Pin 04 and GND): Try accessing `http://<dhcp-ip-of-the-board>>/ulp` once build is flashed on the MCU
 
@@ -53,8 +52,9 @@ Highlights:
 - Rather than flashing on the chip, you can now run the demo in QEMU:
   - Clone and then build [the Espressif fork of QEMU](https://github.com/espressif/qemu) by following the [build instructions](https://github.com/espressif/qemu/wiki)
   - Install the [esptool.py](https://github.com/espressif/esptool) utility
-  - QEMU ethernet driver seems to only work on ESP-IDF 4.4+, so build the app with `export ESP_IDF_VERSION=release/v4.4; cargo build --features native,qemu` or with `export ESP_IDF_VERSION=master; cargo build --features native,qemu` 
-  - NOTE: Only ESP32 is supported for the moment, so make sure that the `xtensa-esp32-espidf` target (the default one) is active in your `.cargo/config.toml` file (or override with `export ESP_IDF_VERSION=release/v4.4; cargo build --features native,qemu --target xtensa-esp32-espidf`)
+  - Uncomment `CONFIG_ETH_USE_OPENETH=y` in `sdkconfig.defaults.esp32` (it is not enabled by default because this somehow causes issues when compiling for the ESP32S2)
+  - Build the app with `cargo build --features qemu` 
+  - NOTE: Only ESP32 is supported for the moment, so make sure that the `xtensa-esp32-espidf` target (the default one) is active in your `.cargo/config.toml` file (or override with `cargo build --features qemu --target xtensa-esp32-espidf`)
   - Run it in QEMU by typing `./qemu.sh`. NOTE: You might have to change the `ESP_QEMU_PATH` in that script to point to the `build` subdirectory of your QEMU Espressif clone
 
 ## Flash
