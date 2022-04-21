@@ -94,6 +94,8 @@ use st7789;
 
 use epd_waveshare::{epd4in2::*, graphics::VarDisplay, prelude::*};
 
+use test_lib::get_version;
+
 #[allow(dead_code)]
 #[cfg(not(feature = "qemu"))]
 const SSID: &str = env!("RUST_ESP32_STD_DEMO_WIFI_SSID");
@@ -334,6 +336,7 @@ fn main() -> Result<()> {
                 "A2 sensor reading: {}mV",
                 powered_adc1.read(&mut a2).unwrap()
             );
+            log::info!("<<<<<<<<<<<<<<< Updated version {:?} >>>>>>>>>>>>>>>", get_version());
         }
     };
 
