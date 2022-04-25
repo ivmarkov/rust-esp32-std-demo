@@ -625,10 +625,12 @@ fn test_mqtt_client() -> Result<esp_idf_svc::mqtt::client::EspMqttClient> {
 
     let conf = MqttClientConfiguration {
         client_id: Some("rust-esp32-std-demo"),
+        crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+
         ..Default::default()
     };
 
-    let (mut client, mut connection) = EspMqttClient::new("mqtt://broker.emqx.io:1883", &conf)?;
+    let (mut client, mut connection) = EspMqttClient::new("mqtts://broker.emqx.io:8883", &conf)?;
 
     info!("MQTT client started");
 
@@ -735,8 +737,6 @@ mod experimental {
         info!("About to fetch content from {}", url);
 
         let mut client = EspHttpClient::new(&EspHttpClientConfiguration {
-            use_global_ca_store: true,
-
             crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
 
             ..Default::default()
