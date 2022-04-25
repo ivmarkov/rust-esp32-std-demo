@@ -734,7 +734,13 @@ mod experimental {
 
         info!("About to fetch content from {}", url);
 
-        let mut client = EspHttpClient::new_default()?;
+        let mut client = EspHttpClient::new(&EspHttpClientConfiguration {
+            use_global_ca_store: true,
+
+            crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+
+            ..Default::default()
+        })?;
 
         let response = client.get(&url)?.submit()?;
 
