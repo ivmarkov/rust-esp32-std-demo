@@ -52,8 +52,8 @@ Highlights:
 - Rather than flashing on the chip, you can now run the demo in QEMU:
   - Clone and then build [the Espressif fork of QEMU](https://github.com/espressif/qemu) by following the [build instructions](https://github.com/espressif/qemu/wiki)
   - Install the [esptool.py](https://github.com/espressif/esptool) utility
-  - Uncomment `CONFIG_ETH_USE_OPENETH=y` in `sdkconfig.defaults.esp32` (it is not enabled by default because this somehow causes issues when compiling for the ESP32S2)
-  - Build the app with `cargo build --features qemu` 
+  - Uncomment `CONFIG_ETH_USE_OPENETH=y`, `CONFIG_MBEDTLS_HARDWARE_AES=n`, and `CONFIG_MBEDTLS_HARDWARE_SHA=n` in `sdkconfig.defaults.esp32` (it is not enabled by default because this somehow causes issues when compiling for the ESP32S2)
+  - Build the app with `cargo build --features qemu`
   - NOTE: Only ESP32 is supported for the moment, so make sure that the `xtensa-esp32-espidf` target (the default one) is active in your `.cargo/config.toml` file (or override with `cargo build --features qemu --target xtensa-esp32-espidf`)
   - Run it in QEMU by typing `./qemu.sh`. NOTE: You might have to change the `ESP_QEMU_PATH` in that script to point to the `build` subdirectory of your QEMU Espressif clone
 
