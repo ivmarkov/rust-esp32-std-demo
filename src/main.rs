@@ -31,6 +31,7 @@ use std::{cell::RefCell, env, sync::atomic::*, sync::Arc, thread, time::*};
 
 use anyhow::bail;
 
+use embedded_svc::mqtt::client::utils::ConnState;
 use log::*;
 
 use url;
@@ -47,7 +48,7 @@ use embedded_svc::httpd::registry::*;
 use embedded_svc::httpd::*;
 use embedded_svc::io;
 use embedded_svc::ipv4;
-use embedded_svc::mqtt::client::{Publish, QoS};
+use embedded_svc::mqtt::client::{Client, Connection, MessageImpl, Publish, QoS};
 use embedded_svc::ping::Ping;
 use embedded_svc::sys_time::SystemTime;
 use embedded_svc::timer::TimerService;
@@ -76,8 +77,8 @@ use esp_idf_hal::i2c;
 use esp_idf_hal::prelude::*;
 use esp_idf_hal::spi;
 
-use esp_idf_sys::esp;
 use esp_idf_sys::{self, c_types};
+use esp_idf_sys::{esp, EspError};
 
 use display_interface_spi::SPIInterfaceNoCS;
 
@@ -534,7 +535,7 @@ fn test_tcp_bind() -> Result<()> {
 
 fn test_timer(
     mut eventloop: EspBackgroundEventLoop,
-    mut client: EspMqttClient,
+    mut client: EspMqttClient<ConnState<MessageImpl, EspError>>,
 ) -> Result<EspTimer> {
     use embedded_svc::event_bus::Postbox;
 
@@ -617,10 +618,7 @@ fn test_eventloop() -> Result<(EspBackgroundEventLoop, EspBackgroundSubscription
     Ok((eventloop, subscription))
 }
 
-fn test_mqtt_client() -> Result<esp_idf_svc::mqtt::client::EspMqttClient> {
-    use embedded_svc::mqtt::client::{Client, Connection, Publish, QoS};
-    use esp_idf_svc::mqtt::client::{EspMqttClient, MqttClientConfiguration};
-
+fn test_mqtt_client() -> Result<EspMqttClient<ConnState<MessageImpl, EspError>>> {
     info!("About to start MQTT client");
 
     let conf = MqttClientConfiguration {
@@ -630,12 +628,13 @@ fn test_mqtt_client() -> Result<esp_idf_svc::mqtt::client::EspMqttClient> {
         ..Default::default()
     };
 
-    let (mut client, mut connection) = EspMqttClient::new("mqtts://broker.emqx.io:8883", &conf)?;
+    let (mut client, mut connection) =
+        EspMqttClient::new_with_conn("mqtts://broker.emqx.io:8883", &conf)?;
 
     info!("MQTT client started");
 
     // Need to immediately start pumping the connection for messages, or else subscribe() and publish() below will not work
-    // Note that when using the alternative constructor - `EspMqttClient::new_with_callback` - you don't need to
+    // Note that when using the alternative constructor - `EspMqttClient::new` - you don't need to
     // spawn a new thread, as the messages will be pumped with a backpressure into the callback you provide.
     // Yet, you still need to efficiently process each message in the callback without blocking for too long.
     //
