@@ -797,10 +797,10 @@ fn ttgo_hello_world(
 
     display
         .init(&mut delay::Ets)
-        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
     display
         .set_orientation(st7789::Orientation::Portrait)
-        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     // The TTGO board's screen does not start at offset 0x0, and the physical size is 135x240, instead of 240x320
     let top_left = Point::new(52, 40);
@@ -862,10 +862,10 @@ fn kaluga_hello_world(
 
         display
             .init(&mut delay::Ets)
-            .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
         display
             .set_orientation(st7789::Orientation::Landscape)
-            .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
         led_draw(&mut display)
     }
@@ -908,13 +908,13 @@ fn heltec_hello_world(
 
     display
         .init()
-        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     led_draw(&mut display)?;
 
     display
         .flush()
-        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     Ok(())
 }
@@ -966,13 +966,13 @@ fn ssd1306g_hello_world_spi(
 
     display
         .init()
-        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     led_draw(&mut display)?;
 
     display
         .flush()
-        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     Ok(())
 }
@@ -1014,13 +1014,13 @@ fn ssd1306g_hello_world(
 
     display
         .init()
-        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     led_draw(&mut display)?;
 
     display
         .flush()
-        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     Ok(power)
 }
@@ -1062,12 +1062,12 @@ fn esp32s3_usb_otg_hello_world(
 
     display
         .init(&mut delay::Ets)
-        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
     display
         .set_orientation(st7789::Orientation::Landscape)
-        .map_err(|e| anyhow::message("Display error: {:?}", e))?;
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-    led_draw(&mut display)
+    led_draw(&mut display).map_err(|e| anyhow::anyhow!("Led draw error: {:?}", e))
 }
 
 #[allow(dead_code)]
