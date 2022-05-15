@@ -11,7 +11,7 @@ Highlights:
 - **Support for Rust STD** (threads, console, TCP/IP) safe APIs
   - ... upstreamed and [part of the Rust STD library](https://github.com/rust-lang/rust/pull/87666)
 - **New, experimental!** Support for asynchronous networking using [smol](https://github.com/smol-rs/smol)
-- **New, experimental!** Support for running in the [Espressif fork of QEMU](https://github.com/espressif/qemu/wiki)
+- Support for running in the [Espressif fork of QEMU](https://github.com/espressif/qemu/wiki)
 - Rust Safe APIs for various ESP-IDF services like WiFi, Ping, Httpd and logging
   - ... via [esp-idf-svc](https://crates.io/crates/esp-idf-svc) ([embedded-svc](https://crates.io/crates/embedded-svc) abstractions implemented on top of ESP-IDF)
 - NAPT support (Router from the SoftAP to the STA interface). **NOTE**: In production, do NOT leave the SoftAP interface open (without password)!
@@ -48,10 +48,10 @@ Highlights:
     - Note that other RMII Ethernet boards might work just fine as well, but you'll have to change the chip from `RmiiEthDriver::IP101` to whatever chip your board is using, in the demo code itself.
 - (Only if you happen to have an ESP32-S2 board and can connect a LED to GPIO Pin 04 and GND): Try accessing `http://<dhcp-ip-of-the-board>>/ulp` once build is flashed on the MCU
 
-## QEMU (WIP, experimental)
+## QEMU
+
 - Rather than flashing on the chip, you can now run the demo in QEMU:
   - Clone and then build [the Espressif fork of QEMU](https://github.com/espressif/qemu) by following the [build instructions](https://github.com/espressif/qemu/wiki)
-  - Install the [esptool.py](https://github.com/espressif/esptool) utility
   - Uncomment `CONFIG_ETH_USE_OPENETH=y`, `CONFIG_MBEDTLS_HARDWARE_AES=n`, and `CONFIG_MBEDTLS_HARDWARE_SHA=n` in `sdkconfig.defaults.esp32` (it is not enabled by default because this somehow causes issues when compiling for the ESP32S2)
   - Build the app with `cargo build --features qemu`
   - NOTE: Only ESP32 is supported for the moment, so make sure that the `xtensa-esp32-espidf` target (the default one) is active in your `.cargo/config.toml` file (or override with `cargo build --features qemu --target xtensa-esp32-espidf`)

@@ -30,7 +30,7 @@ build-std = ["std", "panic_abort"]
 #ESP_IDF_VERSION = { value = "master" }
 
 # Comment out this when using the PlatformIO build (it only supports `v4.3.2`)
-ESP_IDF_VERSION = { value = "release/v4.4" } 
+ESP_IDF_VERSION = { value = "release/v4.4" }
 
 # These configurations will pick up your custom "sdkconfig.release", "sdkconfig.debug" or "sdkconfig.defaults[.*]" files
 # that you might put in the root of the project
