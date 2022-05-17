@@ -77,8 +77,7 @@ use esp_idf_hal::i2c;
 use esp_idf_hal::prelude::*;
 use esp_idf_hal::spi;
 
-use esp_idf_sys::{self, c_types};
-use esp_idf_sys::{esp, EspError};
+use esp_idf_sys::{self, c_types, esp, esp_nofail, EspError};
 
 use display_interface_spi::SPIInterfaceNoCS;
 
@@ -263,6 +262,9 @@ fn main() -> Result<()> {
         Some(&[0x02, 0x00, 0x00, 0x12, 0x34, 0x56]),
         None,
     )?))?;
+
+    #[cfg(not(feature = "qemu"))]
+    bluetooth()?;
 
     test_tcp()?;
 
@@ -910,7 +912,7 @@ fn heltec_hello_world(
         .init()
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-    led_draw(&mut display)?;
+    led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     display
         .flush()
@@ -1097,6 +1099,158 @@ where
 
     info!("LED rendering done");
 
+    Ok(())
+}
+
+#[cfg(not(feature = "qemu"))]
+fn bluetooth() -> Result<()> {
+    info!("About to start BLE scan");
+
+    unsafe extern "C" fn bluetooth_gap_callback(
+        event: esp_idf_sys::esp_gap_ble_cb_event_t,
+        param: *mut esp_idf_sys::esp_ble_gap_cb_param_t,
+    ) {
+        let mut param = *param;
+        match event {
+            esp_idf_sys::esp_gap_ble_cb_event_t_ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT => {
+                let duration_seconds = 2;
+                esp_nofail!(esp_idf_sys::esp_ble_gap_start_scanning(duration_seconds));
+            }
+            esp_idf_sys::esp_gap_ble_cb_event_t_ESP_GAP_BLE_SCAN_START_COMPLETE_EVT => {
+                if param.scan_start_cmpl.status
+                    != esp_idf_sys::esp_bt_status_t_ESP_BT_STATUS_SUCCESS
+                {
+                    error!(
+                        "BLE scan starting failed, error status: {}",
+                        param.scan_start_cmpl.status
+                    );
+                }
+                debug!("BLE scan started successfully");
+            }
+            esp_idf_sys::esp_gap_ble_cb_event_t_ESP_GAP_BLE_SCAN_RESULT_EVT => {
+                if param.scan_rst.search_evt
+                    == esp_idf_sys::esp_gap_search_evt_t_ESP_GAP_SEARCH_INQ_RES_EVT
+                {
+                    let mut advertisment_name_length = 0;
+                    let advertisment_name_raw = esp_idf_sys::esp_ble_resolve_adv_data(
+                        param.scan_rst.ble_adv.as_mut_ptr(),
+                        esp_idf_sys::esp_ble_adv_data_type_ESP_BLE_AD_TYPE_NAME_CMPL as u8,
+                        &mut advertisment_name_length,
+                    );
+                    debug!(
+                        "BLE scan result advertisement data len {}, scan response len {}",
+                        param.scan_rst.adv_data_len, param.scan_rst.scan_rsp_len
+                    );
+                    if advertisment_name_length == 0 {
+                        debug!("Reached end of scan results");
+                        return;
+                    }
+                    let advertisment_name =
+                        std::str::from_utf8_unchecked(std::slice::from_raw_parts(
+                            advertisment_name_raw,
+                            advertisment_name_length as usize,
+                        ));
+                    info!(
+                        "BLE scan found device during advertisment: {:02x?} {}",
+                        &param.scan_rst.bda, advertisment_name
+                    );
+                }
+            }
+            esp_idf_sys::esp_gap_ble_cb_event_t_ESP_GAP_BLE_SCAN_STOP_COMPLETE_EVT => {
+                if param.scan_stop_cmpl.status != esp_idf_sys::esp_bt_status_t_ESP_BT_STATUS_SUCCESS
+                {
+                    error!(
+                        "BLE scan stopping failed, error status: {}",
+                        param.scan_start_cmpl.status
+                    );
+                }
+                debug!("BLE scan stopped successfully");
+            }
+            esp_idf_sys::esp_gap_ble_cb_event_t_ESP_GAP_BLE_EXT_ADV_STOP_COMPLETE_EVT => {
+                if param.adv_stop_cmpl.status != esp_idf_sys::esp_bt_status_t_ESP_BT_STATUS_SUCCESS
+                {
+                    error!(
+                        "BLE advertisment stop scanfailed, error status: {}",
+                        param.adv_stop_cmpl.status
+                    );
+                }
+                debug!("BLE advertisment stopped successfully");
+            }
+            esp_idf_sys::esp_gap_ble_cb_event_t_ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT => {
+                info!("BLE update connection params status = {}, min_int = {}, max_int = {}, conn_int = {}, latency = {}, timeout = {}",
+                    param.update_conn_params.status,
+                    param.update_conn_params.min_int,
+                    param.update_conn_params.max_int,
+                    param.update_conn_params.conn_int,
+                    param.update_conn_params.latency,
+                    param.update_conn_params.timeout);
+            }
+            _ => info!("Received unhandled GAP event: {}", event),
+        }
+    }
+
+    unsafe {
+        esp!(esp_idf_sys::esp_bt_controller_mem_release(
+            esp_idf_sys::esp_bt_mode_t_ESP_BT_MODE_CLASSIC_BT,
+        ))?;
+    }
+
+    // Same defaults as the macro at https://github.com/espressif/esp-idf/blob/8377a3fff1/components/bt/include/esp32/include/esp_bt.h#L163
+    // TODO This should eventually be nicely wrapped in esp_idf_svc.
+    let mut bt_controller_config = esp_idf_sys::esp_bt_controller_config_t {
+        controller_task_stack_size: esp_idf_sys::ESP_TASK_BT_CONTROLLER_STACK as u16,
+        controller_task_prio: esp_idf_sys::ESP_TASK_BT_CONTROLLER_PRIO as u8,
+        hci_uart_no: esp_idf_sys::BT_HCI_UART_NO_DEFAULT as u8,
+        hci_uart_baudrate: esp_idf_sys::BT_HCI_UART_BAUDRATE_DEFAULT,
+        scan_duplicate_mode: esp_idf_sys::SCAN_DUPLICATE_MODE as u8,
+        scan_duplicate_type: esp_idf_sys::SCAN_DUPLICATE_TYPE_VALUE as u8,
+        normal_adv_size: esp_idf_sys::NORMAL_SCAN_DUPLICATE_CACHE_SIZE as u16,
+        mesh_adv_size: esp_idf_sys::MESH_DUPLICATE_SCAN_CACHE_SIZE as u16,
+        send_adv_reserved_size: esp_idf_sys::SCAN_SEND_ADV_RESERVED_SIZE as u16,
+        controller_debug_flag: esp_idf_sys::CONTROLLER_ADV_LOST_DEBUG_BIT,
+        mode: esp_idf_sys::esp_bt_mode_t_ESP_BT_MODE_BLE as u8,
+        ble_max_conn: esp_idf_sys::CONFIG_BTDM_CTRL_BLE_MAX_CONN_EFF as u8,
+        bt_max_acl_conn: esp_idf_sys::CONFIG_BTDM_CTRL_BR_EDR_MAX_ACL_CONN_EFF as u8,
+        bt_sco_datapath: esp_idf_sys::CONFIG_BTDM_CTRL_BR_EDR_SCO_DATA_PATH_EFF as u8,
+        auto_latency: esp_idf_sys::BTDM_CTRL_AUTO_LATENCY_EFF != 0,
+        bt_legacy_auth_vs_evt: esp_idf_sys::BTDM_CTRL_LEGACY_AUTH_VENDOR_EVT_EFF != 0,
+        bt_max_sync_conn: esp_idf_sys::CONFIG_BTDM_CTRL_BR_EDR_MAX_SYNC_CONN_EFF as u8,
+        ble_sca: esp_idf_sys::CONFIG_BTDM_BLE_SLEEP_CLOCK_ACCURACY_INDEX_EFF as u8,
+        pcm_role: esp_idf_sys::CONFIG_BTDM_CTRL_PCM_ROLE_EFF as u8,
+        pcm_polar: esp_idf_sys::CONFIG_BTDM_CTRL_PCM_POLAR_EFF as u8,
+        hli: esp_idf_sys::BTDM_CTRL_HLI != 0,
+        magic: esp_idf_sys::ESP_BT_CONTROLLER_CONFIG_MAGIC_VAL,
+    };
+
+    // Same defaults as in https://github.com/espressif/esp-idf/blob/8377a3fff1927862ba5a17d0f9518e1a9e5fc8dd/examples/bluetooth/bluedroid/ble/gatt_client/main/gattc_demo.c#L68
+    // TODO This should eventually be nicely wrapped in esp_idf_svc.
+    let mut ble_scan_params = esp_idf_sys::esp_ble_scan_params_t {
+        scan_type: esp_idf_sys::esp_ble_scan_type_t_BLE_SCAN_TYPE_ACTIVE,
+        own_addr_type: esp_idf_sys::esp_ble_addr_type_t_BLE_ADDR_TYPE_PUBLIC,
+        scan_filter_policy: esp_idf_sys::esp_ble_scan_filter_t_BLE_SCAN_FILTER_ALLOW_ALL,
+        scan_interval: 0x50,
+        scan_window: 0x30,
+        scan_duplicate: esp_idf_sys::esp_ble_scan_duplicate_t_BLE_SCAN_DUPLICATE_DISABLE,
+    };
+
+    unsafe {
+        esp!(esp_idf_sys::esp_bt_controller_init(
+            &mut bt_controller_config
+        ))?;
+        esp!(esp_idf_sys::esp_bt_controller_enable(
+            esp_idf_sys::esp_bt_mode_t_ESP_BT_MODE_BLE
+        ))?;
+        esp!(esp_idf_sys::esp_bluedroid_init())?;
+        esp!(esp_idf_sys::esp_bluedroid_enable())?;
+        esp!(esp_idf_sys::esp_ble_gap_register_callback(Some(
+            bluetooth_gap_callback
+        )))?;
+        esp!(esp_idf_sys::esp_ble_gap_set_scan_params(
+            &mut ble_scan_params
+        ))?;
+    }
+
+    thread::sleep(Duration::from_secs(3));
     Ok(())
 }
 
