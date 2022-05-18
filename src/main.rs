@@ -858,6 +858,7 @@ fn kaluga_hello_world(
         )?;
 
         led_draw(&mut display)
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))
     } else {
         let mut display = st7789::ST7789::new(di, reset, 320, 240);
 
@@ -869,6 +870,7 @@ fn kaluga_hello_world(
             .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
         led_draw(&mut display)
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))
     }
 }
 
@@ -911,7 +913,9 @@ fn heltec_hello_world(
         .init()
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-    led_draw(&mut display)?;
+    led_draw(&mut display)
+
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     display
         .flush()
@@ -969,7 +973,8 @@ fn ssd1306g_hello_world_spi(
         .init()
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-    led_draw(&mut display)?;
+    led_draw(&mut display)
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     display
         .flush()
@@ -1017,7 +1022,8 @@ fn ssd1306g_hello_world(
         .init()
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-    led_draw(&mut display)?;
+    led_draw(&mut display)
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     display
         .flush()
