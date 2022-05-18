@@ -807,6 +807,7 @@ fn ttgo_hello_world(
     let size = Size::new(135, 240);
 
     led_draw(&mut display.cropped(&Rectangle::new(top_left, size)))
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))
 }
 
 #[cfg(feature = "kaluga")]
