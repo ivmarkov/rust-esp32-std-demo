@@ -768,7 +768,9 @@ fn ttgo_hello_world(
 ) -> Result<()> {
     info!("About to initialize the TTGO ST7789 LED driver");
 
-    let config = <spi::config::Config as Default>::default().baudrate(26.MHz().into());
+    let config = <spi::config::Config as Default>::default()
+        .write_only(true)
+        .baudrate(80.MHz().into());
 
     let mut backlight = backlight.into_output()?;
     backlight.set_high()?;
@@ -857,8 +859,7 @@ fn kaluga_hello_world(
             ili9341::DisplaySize240x320,
         )?;
 
-        led_draw(&mut display)
-        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))
+        led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))
     } else {
         let mut display = st7789::ST7789::new(di, reset, 320, 240);
 
@@ -869,8 +870,7 @@ fn kaluga_hello_world(
             .set_orientation(st7789::Orientation::Landscape)
             .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-        led_draw(&mut display)
-        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))
+        led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))
     }
 }
 
@@ -913,9 +913,7 @@ fn heltec_hello_world(
         .init()
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-    led_draw(&mut display)
-
-        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
+    led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     display
         .flush()
@@ -973,8 +971,7 @@ fn ssd1306g_hello_world_spi(
         .init()
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-    led_draw(&mut display)
-        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
+    led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     display
         .flush()
@@ -1022,8 +1019,7 @@ fn ssd1306g_hello_world(
         .init()
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-    led_draw(&mut display)
-        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
+    led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     display
         .flush()
