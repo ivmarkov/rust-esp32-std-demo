@@ -4,6 +4,8 @@ A demo STD binary crate for the ESP32[XX] and ESP-IDF, which connects to WiFi, E
 
 ![CI](https://github.com/ivmarkov/rust-esp32-std-demo/actions/workflows/ci.yml/badge.svg)
 
+[Join in](https://matrix.to/#/#esp-rs:matrix.org) on the discussion!
+
 Highlights:
 
 - **Pure Rust and pure Cargo build!** No CMake, no PlatformIO, no C helpers
