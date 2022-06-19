@@ -749,7 +749,7 @@ mod experimental {
 
         info!(
             "Body (truncated to 3K):\n{:?}",
-            String::from_utf8_lossy(&body).into_owned()
+            String::from_utf8_lossy(body).into_owned()
         );
 
         Ok(())
