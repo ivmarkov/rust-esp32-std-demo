@@ -728,7 +728,7 @@ mod experimental {
 
     fn test_https_client() -> anyhow::Result<()> {
         use embedded_svc::http::{self, client::*, status, Headers, Status};
-        use embedded_svc::io::Bytes;
+        use embedded_svc::io;
         use esp_idf_svc::http::client::*;
 
         let url = String::from("https://google.com");
@@ -741,11 +741,11 @@ mod experimental {
             ..Default::default()
         })?;
 
-        let response = client.get(&url)?.submit()?;
+        let mut response = client.get(&url)?.submit()?;
 
-        let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).take(3084).collect();
+        let mut body = [0_u8; 3048];
 
-        let body = body?;
+        let (body, _) = io::read_max(response.reader(), &mut body)?;
 
         info!(
             "Body (truncated to 3K):\n{:?}",
@@ -1103,6 +1103,7 @@ where
 }
 
 #[allow(unused_variables)]
+#[cfg(not(feature = "experimental"))]
 fn httpd(mutex: Arc<(Mutex<Option<u32>>, Condvar)>) -> Result<idf::Server> {
     let server = idf::ServerRegistry::new()
         .at("/")
@@ -1126,6 +1127,7 @@ fn httpd(mutex: Arc<(Mutex<Option<u32>>, Condvar)>) -> Result<idf::Server> {
 }
 
 #[cfg(esp32s2)]
+#[cfg(not(feature = "experimental"))]
 fn httpd_ulp_endpoints(
     server: ServerRegistry,
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
@@ -1172,6 +1174,102 @@ fn httpd_ulp_endpoints(
                 "#,
                 cycles).to_owned().into())
         })
+}
+
+#[allow(unused_variables)]
+#[cfg(feature = "experimental")]
+fn httpd(
+    mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
+) -> Result<esp_idf_svc::http::server::EspHttpServer> {
+    use embedded_svc::errors::wrap::WrapError;
+    use embedded_svc::http::server::registry::Registry;
+    use embedded_svc::http::server::Response;
+    use embedded_svc::http::SendStatus;
+
+    let mut server = esp_idf_svc::http::server::EspHttpServer::new(&Default::default())?;
+
+    server
+        .handle_get("/", |_req, resp| {
+            resp.send_str("Hello from Rust!")?;
+            Ok(())
+        })?
+        .handle_get("/foo", |_req, resp| {
+            Result::Err(WrapError("Boo, something happened!").into())
+        })?
+        .handle_get("/bar", |_req, resp| {
+            resp.status(403)
+                .status_message("No permissions")
+                .send_str("You have no permissions to access this page")?;
+
+            Ok(())
+        })?
+        .handle_get("/panic", |_req, _resp| panic!("User requested a panic!"))?;
+
+    #[cfg(esp32s2)]
+    httpd_ulp_endpoints(&mut server, mutex)?;
+
+    Ok(server)
+}
+
+#[cfg(esp32s2)]
+#[cfg(feature = "experimental")]
+fn httpd_ulp_endpoints(
+    server: &mut esp_idf_svc::http::server::EspHttpServer,
+    mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
+) -> Result<()> {
+    use embedded_svc::http::server::registry::Registry;
+    use embedded_svc::http::server::Response;
+
+    server
+        .handle_get("/ulp", |_req, resp| {
+            resp.send_str(
+            r#"
+            <doctype html5>
+            <html>
+                <body>
+                    <form method = "post" action = "/ulp_start" enctype="application/x-www-form-urlencoded">
+                        Connect a LED to ESP32-S2 GPIO <b>Pin 04</b> and GND.<br>
+                        Blink it with ULP <input name = "cycles" type = "text" value = "10"> times
+                        <input type = "submit" value = "Go!">
+                    </form>
+                </body>
+            </html>
+            "#)?;
+
+            Ok(())
+        })?
+        .handle_post("/ulp_start", move |mut req, resp| {
+            let mut body = Vec::new();
+
+            ToStd(req.into_reader()?).read_to_end(&mut body)?;
+
+            let cycles = url::form_urlencoded::parse(&body)
+                .filter(|p| p.0 == "cycles")
+                .map(|p| str::parse::<u32>(&p.1).map_err(Error::msg))
+                .next()
+                .ok_or(anyhow::anyhow!("No parameter cycles"))??;
+
+            let mut wait = mutex.0.lock().unwrap();
+
+            *wait = Some(cycles);
+            mutex.1.notify_one();
+
+            resp.send_str(
+                &format!(
+                r#"
+                <doctype html5>
+                <html>
+                    <body>
+                        About to sleep now. The ULP chip should blink the LED {} times and then wake me up. Bye!
+                    </body>
+                </html>
+                "#,
+                cycles))?;
+
+            Ok(())
+        })?;
+
+    Ok(())
 }
 
 #[cfg(esp32s2)]
