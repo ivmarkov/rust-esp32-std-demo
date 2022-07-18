@@ -745,11 +745,11 @@ mod experimental {
 
         let mut body = [0_u8; 3048];
 
-        let (body, _) = io::read_max(response.reader(), &mut body)?;
+        io::read_max(response.reader(), &mut body)?;
 
         info!(
             "Body (truncated to 3K):\n{:?}",
-            String::from_utf8_lossy(body).into_owned()
+            String::from_utf8_lossy(&body).into_owned()
         );
 
         Ok(())
