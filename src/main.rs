@@ -281,7 +281,7 @@ fn main() -> Result<()> {
     experimental::test()?;
 
     #[cfg(not(feature = "qemu"))]
-    #[cfg(esp_idf_config_lwip_ipv4_napt)]
+    #[cfg(esp_idf_lwip_ipv4_napt)]
     enable_napt(&mut wifi)?;
 
     let mutex = Arc::new((Mutex::new(None), Condvar::new()));
@@ -1415,7 +1415,7 @@ fn ping(ip_settings: &ipv4::ClientSettings) -> Result<()> {
 }
 
 #[cfg(not(feature = "qemu"))]
-#[cfg(esp_idf_config_lwip_ipv4_napt)]
+#[cfg(esp_idf_lwip_ipv4_)]
 fn enable_napt(wifi: &mut EspWifi) -> Result<()> {
     wifi.with_router_netif_mut(|netif| netif.unwrap().enable_napt(true));
 
