@@ -1415,7 +1415,7 @@ fn ping(ip_settings: &ipv4::ClientSettings) -> Result<()> {
 }
 
 #[cfg(not(feature = "qemu"))]
-#[cfg(esp_idf_lwip_ipv4_)]
+#[cfg(esp_idf_lwip_ipv4_napt)]
 fn enable_napt(wifi: &mut EspWifi) -> Result<()> {
     wifi.with_router_netif_mut(|netif| netif.unwrap().enable_napt(true));
 
