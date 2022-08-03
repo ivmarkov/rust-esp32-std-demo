@@ -1126,8 +1126,7 @@ fn httpd(mutex: Arc<(Mutex<Option<u32>>, Condvar)>) -> Result<idf::Server> {
     server.start(&Default::default())
 }
 
-#[cfg(esp32s2)]
-#[cfg(not(feature = "experimental"))]
+#[cfg(all(esp32s2, not(feature = "experimental")))]
 fn httpd_ulp_endpoints(
     server: ServerRegistry,
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
@@ -1211,8 +1210,7 @@ fn httpd(
     Ok(server)
 }
 
-#[cfg(esp32s2)]
-#[cfg(feature = "experimental")]
+#[cfg(all(esp32s2, feature = "experimental"))]
 fn httpd_ulp_endpoints(
     server: &mut esp_idf_svc::http::server::EspHttpServer,
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
