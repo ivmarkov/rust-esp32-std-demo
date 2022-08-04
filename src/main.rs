@@ -1216,7 +1216,8 @@ fn httpd_ulp_endpoints(
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
 ) -> Result<()> {
     use embedded_svc::http::server::registry::Registry;
-    use embedded_svc::http::server::Response;
+    use embedded_svc::http::server::{Request, Response};
+    use embedded_svc::io::adapters::ToStd;
 
     server
         .handle_get("/ulp", |_req, resp| {
@@ -1239,7 +1240,7 @@ fn httpd_ulp_endpoints(
         .handle_post("/ulp_start", move |mut req, resp| {
             let mut body = Vec::new();
 
-            ToStd(req.into_reader()?).read_to_end(&mut body)?;
+            ToStd::new(req.reader()).read_to_end(&mut body)?;
 
             let cycles = url::form_urlencoded::parse(&body)
                 .filter(|p| p.0 == "cycles")
