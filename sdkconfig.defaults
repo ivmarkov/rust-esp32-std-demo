@@ -22,3 +22,8 @@ CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
 
 # Future: proper back-trace for esp32c3
 #CONFIG_ESP_SYSTEM_USE_EH_FRAME=y
+
+#Use the partitions.csv file in the git root
+CONFIG_PARTITION_TABLE_SINGLE_APP=
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="../../../../../../partitions.csv"
