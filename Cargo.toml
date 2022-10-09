@@ -74,7 +74,7 @@ embedded-graphics = "0.7"
 display-interface = "0.4"
 display-interface-spi = "0.4"
 st7789 = "0.6"
-ili9341 = "0.5"
+ili9341 = { version = "0.5", git = "https://github.com/yuri91/ili9341-rs", rev = "32ca780" }
 ssd1306 = "0.7"
 epd-waveshare = "0.5.0"
 smol = "1.2"
