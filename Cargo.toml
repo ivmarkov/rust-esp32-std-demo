@@ -69,7 +69,7 @@ url = "2"
 esp-idf-sys = { version = "0.31", features = ["binstart"] }
 esp-idf-svc = "0.42.1"
 esp-idf-hal = "0.38"
-embedded-svc = "0.22.2"
+embedded-svc = "0.22.3"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 display-interface = "0.4"
