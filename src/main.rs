@@ -11,6 +11,10 @@ compile_error!("The `ip101` feature can only be built for the `xtensa-esp32-espi
 #[cfg(all(feature = "kaluga", not(esp32s2)))]
 compile_error!("The `kaluga` feature can only be built for the `xtensa-esp32s2-espidf` target.");
 
+#[cfg(all(feature = "aztouchmod", not(esp32)))]
+compile_error!("The `aztouchmod` feature can only be built for the `xtensa-esp32-espidf` target.");
+
+
 #[cfg(all(feature = "ttgo", not(esp32)))]
 compile_error!("The `ttgo` feature can only be built for the `xtensa-esp32-espidf` target.");
 
@@ -88,7 +92,7 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
 use embedded_graphics::text::*;
 
-use ili9341;
+use ili9341::{DisplaySize240x320, Ili9341, Orientation};
 use ssd1306;
 use ssd1306::mode::DisplayConfig;
 use st7789;
@@ -164,6 +168,17 @@ fn main() -> Result<()> {
         pins.gpio25,
         pins.gpio27,
         pins.gpio26,
+    )?;
+
+    #[cfg(feature = "aztouchmod")]
+    aztouchmod_hello_world(
+        pins.gpio15,
+        pins.gpio4,
+        pins.gpio22,
+        peripherals.spi3,
+        pins.gpio18,
+        pins.gpio23,
+        pins.gpio5,
     )?;
 
     #[cfg(feature = "kaluga")]
@@ -871,6 +886,54 @@ fn kaluga_hello_world(
 
         led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))
     }
+}
+
+#[cfg(feature = "aztouchmod")]
+fn aztouchmod_hello_world(
+    backlight: gpio::Gpio15<gpio::Unknown>,
+    dc: gpio::Gpio4<gpio::Unknown>,
+    rst: gpio::Gpio22<gpio::Unknown>,
+    spi: spi::SPI3,
+    sclk: gpio::Gpio18<gpio::Unknown>,
+    sdo: gpio::Gpio23<gpio::Unknown>,
+    cs: gpio::Gpio5<gpio::Unknown>,
+) -> Result<()> {
+    info!(
+        "About to initialize the AZTouchMod ILI9341 SPI LED driver",
+    );
+
+    let config = <spi::config::Config as Default>::default()
+        .baudrate(40.MHz().into());
+
+    let mut backlight = backlight.into_output()?;
+    backlight.set_low()?;
+
+    let di = SPIInterfaceNoCS::new(
+        spi::Master::<spi::SPI3, _, _, _, _>::new(
+            spi,
+            spi::Pins {
+                sclk,
+                sdo,
+                sdi: Option::<gpio::Gpio19<gpio::Unknown>>::None,
+                cs: Some(cs),
+            },
+            config,
+        )?,
+        dc.into_output()?,
+    );
+
+    let reset = rst.into_output()?;
+
+    let mut display = ili9341::Ili9341::new(
+        di,
+        reset,
+        &mut delay::Ets,
+        Orientation::LandscapeFlipped,
+        ili9341::DisplaySize240x320,
+    )
+    .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
+
+    led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))
 }
 
 #[cfg(feature = "heltec")]
