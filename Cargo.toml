@@ -37,6 +37,9 @@ qemu = []
 # Enable this feature in case you have a Kaluga board and would like to see a LED screen demo
 kaluga = []
 
+# Enable this feature in case you have a AZTouch MOD board and would like to see a LED screen demo
+aztouchmod = []
+
 # Enable this feature in case you have a TTGO board and would like to see a LED screen demo
 ttgo = []
 
