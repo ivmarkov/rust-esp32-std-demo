@@ -7,16 +7,23 @@ target = "xtensa-esp32-espidf"
 
 [target.xtensa-esp32-espidf]
 linker = "ldproxy"
+# Uncomment for ESP-IDF 5 and later
+#rustflags = ["--cfg", "espidf_time64"]
 
 [target.xtensa-esp32s2-espidf]
 linker = "ldproxy"
+# Uncomment for ESP-IDF 5 and later
+#rustflags = ["--cfg", "espidf_time64"]
 
 [target.xtensa-esp32s3-espidf]
 linker = "ldproxy"
+# Uncomment for ESP-IDF 5 and later
+#rustflags = ["--cfg", "espidf_time64"]
 
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
-
+# Uncomment for ESP-IDF 5 and later
+#rustflags = ["--cfg", "espidf_time64", "-C", "default-linker-libraries"]
 # Future - necessary for the experimental "native build" of esp-idf-sys with ESP32C3
 # See also https://github.com/ivmarkov/embuild/issues/16
 rustflags = ["-C", "default-linker-libraries"]

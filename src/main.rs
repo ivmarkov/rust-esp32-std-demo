@@ -31,7 +31,6 @@ use std::{cell::RefCell, env, sync::atomic::*, sync::Arc, thread, time::*};
 
 use anyhow::bail;
 
-use embedded_svc::mqtt::client::utils::ConnState;
 use log::*;
 
 use url;
@@ -43,9 +42,8 @@ use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::digital::v2::OutputPin;
 
 use embedded_svc::eth;
-use embedded_svc::eth::{Eth, TransitionalState};
-use embedded_svc::httpd::registry::*;
-use embedded_svc::httpd::*;
+#[allow(deprecated)]
+use embedded_svc::httpd::{registry::*, *};
 use embedded_svc::io;
 use embedded_svc::ipv4;
 use embedded_svc::mqtt::client::{Client, Connection, MessageImpl, Publish, QoS};
@@ -53,10 +51,10 @@ use embedded_svc::ping::Ping;
 use embedded_svc::sys_time::SystemTime;
 use embedded_svc::timer::TimerService;
 use embedded_svc::timer::*;
+use embedded_svc::utils::mqtt::client::ConnState;
 use embedded_svc::wifi::*;
 
 use esp_idf_svc::eth::*;
-use esp_idf_svc::eventloop::*;
 use esp_idf_svc::eventloop::*;
 use esp_idf_svc::httpd as idf;
 use esp_idf_svc::httpd::ServerRegistry;
@@ -65,7 +63,6 @@ use esp_idf_svc::netif::*;
 use esp_idf_svc::nvs::*;
 use esp_idf_svc::ping;
 use esp_idf_svc::sntp;
-use esp_idf_svc::sysloop::*;
 use esp_idf_svc::systime::EspSystemTime;
 use esp_idf_svc::timer::*;
 use esp_idf_svc::wifi::*;
@@ -74,6 +71,7 @@ use esp_idf_hal::adc;
 use esp_idf_hal::delay;
 use esp_idf_hal::gpio;
 use esp_idf_hal::i2c;
+use esp_idf_hal::peripheral;
 use esp_idf_hal::prelude::*;
 use esp_idf_hal::spi;
 
@@ -88,10 +86,9 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
 use embedded_graphics::text::*;
 
-use ili9341;
+use mipidsi;
 use ssd1306;
 use ssd1306::mode::DisplayConfig;
-use st7789;
 
 use epd_waveshare::{epd4in2::*, graphics::VarDisplay, prelude::*};
 
@@ -138,11 +135,7 @@ fn main() -> Result<()> {
     let pins = peripherals.pins;
 
     #[allow(unused)]
-    let netif_stack = Arc::new(EspNetifStack::new()?);
-    #[allow(unused)]
-    let sys_loop_stack = Arc::new(EspSysLoopStack::new()?);
-    #[allow(unused)]
-    let default_nvs = Arc::new(EspDefaultNvs::new()?);
+    let sysloop = EspSystemEventLoop::take()?;
 
     #[cfg(feature = "ttgo")]
     ttgo_hello_world(
@@ -158,12 +151,12 @@ fn main() -> Result<()> {
     #[cfg(feature = "waveshare_epd")]
     waveshare_epd_hello_world(
         peripherals.spi2,
-        pins.gpio13,
-        pins.gpio14,
-        pins.gpio15,
-        pins.gpio25,
-        pins.gpio27,
-        pins.gpio26,
+        pins.gpio13.into(),
+        pins.gpio14.into(),
+        pins.gpio15.into(),
+        pins.gpio25.into(),
+        pins.gpio27.into(),
+        pins.gpio26.into(),
     )?;
 
     #[cfg(feature = "kaluga")]
@@ -175,7 +168,6 @@ fn main() -> Result<()> {
         pins.gpio15,
         pins.gpio9,
         pins.gpio11,
-        true,
     )?;
 
     #[cfg(feature = "heltec")]
@@ -183,17 +175,21 @@ fn main() -> Result<()> {
 
     #[cfg(feature = "ssd1306g_spi")]
     ssd1306g_hello_world_spi(
-        pins.gpio4,
-        pins.gpio16,
+        pins.gpio4.into(),
+        pins.gpio16.into(),
         peripherals.spi3,
-        pins.gpio18,
-        pins.gpio23,
-        pins.gpio5,
+        pins.gpio18.into(),
+        pins.gpio23.into(),
+        pins.gpio5.into(),
     )?;
 
     #[cfg(feature = "ssd1306g")]
-    let mut led_power =
-        ssd1306g_hello_world(peripherals.i2c0, pins.gpio14, pins.gpio22, pins.gpio21)?;
+    let mut led_power = ssd1306g_hello_world(
+        peripherals.i2c0,
+        pins.gpio14.into(),
+        pins.gpio22.into(),
+        pins.gpio21.into(),
+    )?;
 
     #[cfg(feature = "esp32s3_usb_otg")]
     esp32s3_usb_otg_hello_world(
@@ -209,60 +205,58 @@ fn main() -> Result<()> {
     #[allow(clippy::redundant_clone)]
     #[cfg(not(feature = "qemu"))]
     #[allow(unused_mut)]
-    let mut wifi = wifi(
-        netif_stack.clone(),
-        sys_loop_stack.clone(),
-        default_nvs.clone(),
-    )?;
+    let mut wifi = wifi(peripherals.modem, sysloop.clone())?;
 
     #[allow(clippy::redundant_clone)]
     #[cfg(feature = "qemu")]
-    let eth = eth_configure(Box::new(EspEth::new_openeth(
-        netif_stack.clone(),
-        sys_loop_stack.clone(),
-    )?))?;
+    let eth = eth_configure(
+        &sysloop,
+        Box::new(EspEth::wrap(EthDriver::new_openeth(
+            peripherals.mac,
+            sysloop.clone(),
+        )?)?),
+    )?;
 
     #[allow(clippy::redundant_clone)]
     #[cfg(feature = "ip101")]
-    let eth = eth_configure(Box::new(EspEth::new_rmii(
-        netif_stack.clone(),
-        sys_loop_stack.clone(),
-        RmiiEthPeripherals {
-            rmii_rdx0: pins.gpio25,
-            rmii_rdx1: pins.gpio26,
-            rmii_crs_dv: pins.gpio27,
-            rmii_mdc: pins.gpio23,
-            rmii_txd1: pins.gpio22,
-            rmii_tx_en: pins.gpio21,
-            rmii_txd0: pins.gpio19,
-            rmii_mdio: pins.gpio18,
-            rmii_ref_clk: pins.gpio0,
-            rst: Some(pins.gpio5),
-        },
-        RmiiEthChipset::IP101,
-        None,
-    )?))?;
+    let eth = eth_configure(
+        &sysloop,
+        Box::new(EspEth::wrap(EthDriver::new_rmii(
+            peripherals.mac,
+            pins.gpio25,
+            pins.gpio26,
+            pins.gpio27,
+            pins.gpio23,
+            pins.gpio22,
+            pins.gpio21,
+            pins.gpio19,
+            pins.gpio18,
+            RmiiClockConfig::<gpio::Gpio0, gpio::Gpio16, gpio::Gpio17>::Input(pins.gpio0),
+            Some(pins.gpio5),
+            RmiiEthChipset::IP101,
+            None,
+            sysloop.clone(),
+        )?)?),
+    )?;
 
     #[cfg(feature = "w5500")]
-    let eth = eth_configure(Box::new(EspEth::new_spi(
-        netif_stack.clone(),
-        sys_loop_stack.clone(),
-        SpiEthPeripherals {
-            int_pin: pins.gpio13,
-            rst_pin: Some(pins.gpio25),
-            spi_pins: spi::Pins {
-                sclk: pins.gpio12,
-                sdo: pins.gpio26,
-                sdi: Some(pins.gpio27),
-                cs: Some(pins.gpio14),
-            },
-            spi: peripherals.spi2,
-        },
-        SpiEthChipset::W5500,
-        20.MHz().into(),
-        Some(&[0x02, 0x00, 0x00, 0x12, 0x34, 0x56]),
-        None,
-    )?))?;
+    let eth = eth_configure(
+        &sysloop,
+        Box::new(EspEth::wrap(EthDriver::new_spi(
+            peripherals.spi2,
+            pins.gpio13,
+            pins.gpio12,
+            pins.gpio26,
+            pins.gpio27,
+            Some(pins.gpio14),
+            Some(pins.gpio25),
+            SpiEthChipset::W5500,
+            20.MHz().into(),
+            Some(&[0x02, 0x00, 0x00, 0x12, 0x34, 0x56]),
+            None,
+            sysloop.clone(),
+        )?)?),
+    )?;
 
     test_tcp()?;
 
@@ -304,15 +298,15 @@ fn main() -> Result<()> {
     let mut hall_sensor = peripherals.hall_sensor;
 
     #[cfg(esp32)]
-    let mut a2 = pins.gpio34.into_analog_atten_11db()?;
-    #[cfg(any(esp32s2, esp32s3))]
-    let mut a2 = pins.gpio2.into_analog_atten_11db()?;
-    #[cfg(esp32c3)]
-    let mut a2 = pins.gpio2.into_analog_atten_11db()?;
+    let adc_pin = pins.gpio34;
+    #[cfg(any(esp32s2, esp32s3, esp32c3))]
+    let adc_pin = pins.gpio2;
 
-    let mut powered_adc1 = adc::PoweredAdc::new(
+    let mut a2 = adc::AdcChannelDriver::<_, adc::Atten11dB<adc::ADC1>>::new(adc_pin)?;
+
+    let mut powered_adc1 = adc::AdcDriver::new(
         peripherals.adc1,
-        adc::config::Config::new().calibration(true),
+        &adc::config::Config::new().calibration(true),
     )?;
 
     #[allow(unused)]
@@ -329,7 +323,7 @@ fn main() -> Result<()> {
             #[cfg(esp32)]
             log::info!(
                 "Hall sensor reading: {}mV",
-                powered_adc1.read(&mut hall_sensor).unwrap()
+                powered_adc1.read_hall(&mut hall_sensor).unwrap()
             );
             log::info!(
                 "A2 sensor reading: {}mV",
@@ -354,7 +348,7 @@ fn main() -> Result<()> {
 
     #[cfg(any(feature = "qemu", feature = "w5500", feature = "ip101"))]
     {
-        let _eth_peripherals = eth.release()?;
+        drop(eth);
         info!("Eth stopped");
     }
 
@@ -534,13 +528,13 @@ fn test_tcp_bind() -> Result<()> {
 }
 
 fn test_timer(
-    mut eventloop: EspBackgroundEventLoop,
+    eventloop: EspBackgroundEventLoop,
     mut client: EspMqttClient<ConnState<MessageImpl, EspError>>,
 ) -> Result<EspTimer> {
     use embedded_svc::event_bus::Postbox;
 
     info!("About to schedule a one-shot timer for after 2 seconds");
-    let mut once_timer = EspTimerService::new()?.timer(|| {
+    let once_timer = EspTimerService::new()?.timer(|| {
         info!("One-shot timer triggered");
     })?;
 
@@ -549,7 +543,7 @@ fn test_timer(
     thread::sleep(Duration::from_secs(3));
 
     info!("About to schedule a periodic timer every five seconds");
-    let mut periodic_timer = EspTimerService::new()?.timer(move || {
+    let periodic_timer = EspTimerService::new()?.timer(move || {
         info!("Tick from periodic timer");
 
         let now = EspSystemTime {}.now();
@@ -608,7 +602,7 @@ fn test_eventloop() -> Result<(EspBackgroundEventLoop, EspBackgroundSubscription
     use embedded_svc::event_bus::EventBus;
 
     info!("About to start a background event loop");
-    let mut eventloop = EspBackgroundEventLoop::new(&Default::default())?;
+    let eventloop = EspBackgroundEventLoop::new(&Default::default())?;
 
     info!("About to subscribe to the background event loop");
     let subscription = eventloop.subscribe(|message: &EventLoopMessage| {
@@ -728,29 +722,33 @@ mod experimental {
 
     fn test_https_client() -> anyhow::Result<()> {
         use embedded_svc::http::{self, client::*, status, Headers, Status};
-        use embedded_svc::io;
+        use embedded_svc::io::Read;
+        use embedded_svc::utils::io;
         use esp_idf_svc::http::client::*;
 
         let url = String::from("https://google.com");
 
         info!("About to fetch content from {}", url);
 
-        let mut client = EspHttpClient::new(&EspHttpClientConfiguration {
+        let mut client = Client::wrap(EspHttpConnection::new(&Configuration {
             crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
 
             ..Default::default()
-        })?;
+        })?);
 
         let mut response = client.get(&url)?.submit()?;
 
         let mut body = [0_u8; 3048];
 
-        let (body, _) = io::read_max(response.reader(), &mut body)?;
+        let read = io::try_read_full(&mut response, &mut body).map_err(|err| err.0)?;
 
         info!(
             "Body (truncated to 3K):\n{:?}",
-            String::from_utf8_lossy(body).into_owned()
+            String::from_utf8_lossy(&body[..read]).into_owned()
         );
+
+        // Complete the response
+        while response.read(&mut body)? > 0 {}
 
         Ok(())
     }
@@ -758,48 +756,38 @@ mod experimental {
 
 #[cfg(feature = "ttgo")]
 fn ttgo_hello_world(
-    backlight: gpio::Gpio4<gpio::Unknown>,
-    dc: gpio::Gpio16<gpio::Unknown>,
-    rst: gpio::Gpio23<gpio::Unknown>,
+    backlight: gpio::Gpio4,
+    dc: gpio::Gpio16,
+    rst: gpio::Gpio23,
     spi: spi::SPI2,
-    sclk: gpio::Gpio18<gpio::Unknown>,
-    sdo: gpio::Gpio19<gpio::Unknown>,
-    cs: gpio::Gpio5<gpio::Unknown>,
+    sclk: gpio::Gpio18,
+    sdo: gpio::Gpio19,
+    cs: gpio::Gpio5,
 ) -> Result<()> {
     info!("About to initialize the TTGO ST7789 LED driver");
 
-    let config = <spi::config::Config as Default>::default().baudrate(26.MHz().into());
-
-    let mut backlight = backlight.into_output()?;
+    let mut backlight = gpio::PinDriver::output(backlight)?;
     backlight.set_high()?;
 
     let di = SPIInterfaceNoCS::new(
-        spi::Master::<spi::SPI2, _, _, _, _>::new(
+        spi::SpiDeviceDriver::new_single(
             spi,
-            spi::Pins {
-                sclk,
-                sdo,
-                sdi: Option::<gpio::Gpio21<gpio::Unknown>>::None,
-                cs: Some(cs),
-            },
-            config,
+            sclk,
+            sdo,
+            Option::<gpio::Gpio21>::None,
+            spi::Dma::Disabled,
+            Some(cs),
+            &spi::SpiConfig::new().baudrate(26.MHz().into()),
         )?,
-        dc.into_output()?,
+        gpio::PinDriver::output(dc)?,
     );
 
-    let mut display = st7789::ST7789::new(
-        di,
-        rst.into_output()?,
-        // SP7789V is designed to drive 240x320 screens, even though the TTGO physical screen is smaller
-        240,
-        320,
-    );
-
-    display
-        .init(&mut delay::Ets)
+    let mut display = mipidsi::Builder::st7789(di)
+        .init(&mut delay::Ets, Some(gpio::PinDriver::output(rst)?))
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
+
     display
-        .set_orientation(st7789::Orientation::Portrait)
+        .set_orientation(mipidsi::options::Orientation::Portrait(false))
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     // The TTGO board's screen does not start at offset 0x0, and the physical size is 135x240, instead of 240x320
@@ -812,86 +800,63 @@ fn ttgo_hello_world(
 
 #[cfg(feature = "kaluga")]
 fn kaluga_hello_world(
-    backlight: gpio::Gpio6<gpio::Unknown>,
-    dc: gpio::Gpio13<gpio::Unknown>,
-    rst: gpio::Gpio16<gpio::Unknown>,
+    backlight: gpio::Gpio6,
+    dc: gpio::Gpio13,
+    rst: gpio::Gpio16,
     spi: spi::SPI3,
-    sclk: gpio::Gpio15<gpio::Unknown>,
-    sdo: gpio::Gpio9<gpio::Unknown>,
-    cs: gpio::Gpio11<gpio::Unknown>,
-    ili9341: bool,
+    sclk: gpio::Gpio15,
+    sdo: gpio::Gpio9,
+    cs: gpio::Gpio11,
 ) -> Result<()> {
-    info!(
-        "About to initialize the Kaluga {} SPI LED driver",
-        if ili9341 { "ILI9341" } else { "ST7789" }
-    );
+    info!("About to initialize the Kaluga ST7789 SPI LED driver");
 
-    let config = <spi::config::Config as Default>::default()
-        .baudrate((if ili9341 { 40 } else { 80 }).MHz().into());
-
-    let mut backlight = backlight.into_output()?;
+    let mut backlight = gpio::PinDriver::output(backlight)?;
     backlight.set_high()?;
 
     let di = SPIInterfaceNoCS::new(
-        spi::Master::<spi::SPI3, _, _, _, _>::new(
+        spi::SpiDeviceDriver::new_single(
             spi,
-            spi::Pins {
-                sclk,
-                sdo,
-                sdi: Option::<gpio::Gpio21<gpio::Unknown>>::None,
-                cs: Some(cs),
-            },
-            config,
+            sclk,
+            sdo,
+            Option::<gpio::AnyIOPin>::None,
+            spi::Dma::Disabled,
+            Some(cs),
+            &spi::SpiConfig::new().baudrate(80.MHz().into()),
         )?,
-        dc.into_output()?,
+        gpio::PinDriver::output(dc)?,
     );
 
-    let reset = rst.into_output()?;
-
-    if ili9341 {
-        let mut display = ili9341::Ili9341::new(
-            di,
-            reset,
-            &mut delay::Ets,
-            KalugaOrientation::Landscape,
-            ili9341::DisplaySize240x320,
-        )
+    let mut display = mipidsi::Builder::st7789(di)
+        .init(&mut delay::Ets, Some(gpio::PinDriver::output(rst)?))
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-        led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))
-    } else {
-        let mut display = st7789::ST7789::new(di, reset, 320, 240);
+    display
+        .set_orientation(mipidsi::options::Orientation::Landscape(false))
+        .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-        display
-            .init(&mut delay::Ets)
-            .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
-        display
-            .set_orientation(st7789::Orientation::Landscape)
-            .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
+    led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-        led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))
-    }
+    Ok(())
 }
 
 #[cfg(feature = "heltec")]
 fn heltec_hello_world(
-    rst: gpio::Gpio16<gpio::Unknown>,
+    rst: gpio::Gpio16,
     i2c: i2c::I2C0,
-    sda: gpio::Gpio4<gpio::Unknown>,
-    scl: gpio::Gpio15<gpio::Unknown>,
+    sda: gpio::Gpio4,
+    scl: gpio::Gpio15,
 ) -> Result<()> {
     info!("About to initialize the Heltec SSD1306 I2C LED driver");
 
-    let config = <i2c::config::MasterConfig as Default>::default().baudrate(400.kHz().into());
-
-    let di = ssd1306::I2CDisplayInterface::new(i2c::Master::<i2c::I2C0, _, _>::new(
+    let di = ssd1306::I2CDisplayInterface::new(i2c::I2cDriver::new(
         i2c,
-        i2c::MasterPins { sda, scl },
-        config,
+        sda,
+        scl,
+        &i2c::I2cConfig::new().baudrate(400.kHz().into()),
     )?);
 
     let mut delay = delay::Ets;
-    let mut reset = rst.into_output()?;
+    let mut reset = gpio::PinDriver::output(rst)?;
 
     reset.set_high()?;
     delay.delay_ms(1 as u32);
@@ -923,33 +888,30 @@ fn heltec_hello_world(
 
 #[cfg(feature = "ssd1306g_spi")]
 fn ssd1306g_hello_world_spi(
-    dc: gpio::Gpio4<gpio::Unknown>,
-    rst: gpio::Gpio16<gpio::Unknown>,
-    spi: spi::SPI3,
-    sclk: gpio::Gpio18<gpio::Unknown>,
-    sdo: gpio::Gpio23<gpio::Unknown>,
-    cs: gpio::Gpio5<gpio::Unknown>,
+    dc: gpio::AnyOutputPin,
+    rst: gpio::AnyOutputPin,
+    spi: impl peripheral::Peripheral<P = impl spi::SpiAnyPins> + 'static,
+    sclk: gpio::AnyOutputPin,
+    sdo: gpio::AnyOutputPin,
+    cs: gpio::AnyOutputPin,
 ) -> Result<()> {
     info!("About to initialize the SSD1306 SPI LED driver");
 
-    let config = <spi::config::Config as Default>::default().baudrate(10.MHz().into());
-
     let di = SPIInterfaceNoCS::new(
-        spi::Master::<spi::SPI3, _, _, _, _>::new(
+        spi::SpiDeviceDriver::new_single(
             spi,
-            spi::Pins {
-                sclk,
-                sdo,
-                sdi: Option::<gpio::Gpio19<gpio::Unknown>>::None,
-                cs: Some(cs),
-            },
-            config,
+            sclk,
+            sdo,
+            Option::<gpio::AnyIOPin>::None,
+            spi::Dma::Disabled,
+            Some(cs),
+            &spi::SpiConfig::new().baudrate(10.MHz().into()),
         )?,
-        dc.into_output()?,
+        gpio::PinDriver::output(dc)?,
     );
 
     let mut delay = delay::Ets;
-    let mut reset = rst.into_output()?;
+    let mut reset = gpio::PinDriver::output(rst)?;
 
     reset.set_high()?;
     delay.delay_ms(1 as u32);
@@ -981,23 +943,22 @@ fn ssd1306g_hello_world_spi(
 
 #[cfg(feature = "ssd1306g")]
 fn ssd1306g_hello_world(
-    i2c: i2c::I2C0,
-    pwr: gpio::Gpio14<gpio::Unknown>,
-    scl: gpio::Gpio22<gpio::Unknown>,
-    sda: gpio::Gpio21<gpio::Unknown>,
-) -> Result<gpio::Gpio14<gpio::Output>> {
+    i2c: impl peripheral::Peripheral<P = impl i2c::I2c> + 'static,
+    pwr: gpio::AnyOutputPin,
+    scl: gpio::AnyIOPin,
+    sda: gpio::AnyIOPin,
+) -> Result<impl OutputPin<Error = EspError>> {
     info!("About to initialize a generic SSD1306 I2C LED driver");
 
-    let config = <i2c::config::MasterConfig as Default>::default().baudrate(400.kHz().into());
-
-    let di = ssd1306::I2CDisplayInterface::new(i2c::Master::<i2c::I2C0, _, _>::new(
+    let di = ssd1306::I2CDisplayInterface::new(i2c::I2cDriver::new(
         i2c,
-        i2c::MasterPins { sda, scl },
-        config,
+        sda,
+        scl,
+        &i2c::I2cConfig::new().baudrate(400.kHz().into()),
     )?);
 
     let mut delay = delay::Ets;
-    let mut power = pwr.into_output()?;
+    let mut power = gpio::PinDriver::output(pwr)?;
 
     // Powering an OLED display via an output pin allows one to shutdown the display
     // when it is no longer needed so as to conserve power
@@ -1029,44 +990,38 @@ fn ssd1306g_hello_world(
 
 #[cfg(feature = "esp32s3_usb_otg")]
 fn esp32s3_usb_otg_hello_world(
-    backlight: gpio::Gpio9<gpio::Unknown>,
-    dc: gpio::Gpio4<gpio::Unknown>,
-    rst: gpio::Gpio8<gpio::Unknown>,
+    backlight: gpio::Gpio9,
+    dc: gpio::Gpio4,
+    rst: gpio::Gpio8,
     spi: spi::SPI3,
-    sclk: gpio::Gpio6<gpio::Unknown>,
-    sdo: gpio::Gpio7<gpio::Unknown>,
-    cs: gpio::Gpio5<gpio::Unknown>,
+    sclk: gpio::Gpio6,
+    sdo: gpio::Gpio7,
+    cs: gpio::Gpio5,
 ) -> Result<()> {
     info!("About to initialize the ESP32-S3-USB-OTG SPI LED driver ST7789VW");
 
-    let config = <spi::config::Config as Default>::default().baudrate(80.MHz().into());
-
-    let mut backlight = backlight.into_output()?;
+    let mut backlight = gpio::PinDriver::output(backlight)?;
     backlight.set_high()?;
 
     let di = SPIInterfaceNoCS::new(
-        spi::Master::<spi::SPI3, _, _, _, _>::new(
+        spi::SpiDeviceDriver::new_single(
             spi,
-            spi::Pins {
-                sclk,
-                sdo,
-                sdi: Option::<gpio::Gpio21<gpio::Unknown>>::None,
-                cs: Some(cs),
-            },
-            config,
+            sclk,
+            sdo,
+            Option::<gpio::AnyIOPin>::None,
+            spi::Dma::Disabled,
+            Some(cs),
+            &spi::SpiConfig::new().baudrate(80.MHz().into()),
         )?,
-        dc.into_output()?,
+        gpio::PinDriver::output(dc)?,
     );
 
-    let reset = rst.into_output()?;
-
-    let mut display = st7789::ST7789::new(di, reset, 240, 240);
-
-    display
-        .init(&mut delay::Ets)
+    let mut display = mipidsi::Builder::st7789(di)
+        .init(&mut delay::Ets, Some(gpio::PinDriver::output(rst)?))
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
+
     display
-        .set_orientation(st7789::Orientation::Landscape)
+        .set_orientation(mipidsi::options::Orientation::Landscape(false))
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     led_draw(&mut display).map_err(|e| anyhow::anyhow!("Led draw error: {:?}", e))
@@ -1076,15 +1031,15 @@ fn esp32s3_usb_otg_hello_world(
 fn led_draw<D>(display: &mut D) -> Result<(), D::Error>
 where
     D: DrawTarget + Dimensions,
-    D::Color: From<Rgb565>,
+    D::Color: RgbColor,
 {
-    display.clear(Rgb565::BLACK.into())?;
+    display.clear(RgbColor::BLACK)?;
 
     Rectangle::new(display.bounding_box().top_left, display.bounding_box().size)
         .into_styled(
             PrimitiveStyleBuilder::new()
-                .fill_color(Rgb565::BLUE.into())
-                .stroke_color(Rgb565::YELLOW.into())
+                .fill_color(RgbColor::BLUE)
+                .stroke_color(RgbColor::YELLOW)
                 .stroke_width(1)
                 .build(),
         )
@@ -1093,7 +1048,7 @@ where
     Text::new(
         "Hello Rust!",
         Point::new(10, (display.bounding_box().size.height - 10) as i32 / 2),
-        MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE.into()),
+        MonoTextStyle::new(&FONT_10X20, RgbColor::WHITE),
     )
     .draw(display)?;
 
@@ -1180,29 +1135,30 @@ fn httpd_ulp_endpoints(
 fn httpd(
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
 ) -> Result<esp_idf_svc::http::server::EspHttpServer> {
-    use embedded_svc::errors::wrap::WrapError;
-    use embedded_svc::http::server::registry::Registry;
-    use embedded_svc::http::server::Response;
-    use embedded_svc::http::SendStatus;
+    use embedded_svc::http::server::{Method, Request, Response};
+    use embedded_svc::io::Write;
 
     let mut server = esp_idf_svc::http::server::EspHttpServer::new(&Default::default())?;
 
     server
-        .handle_get("/", |_req, resp| {
-            resp.send_str("Hello from Rust!")?;
-            Ok(())
-        })?
-        .handle_get("/foo", |_req, resp| {
-            Result::Err(WrapError("Boo, something happened!").into())
-        })?
-        .handle_get("/bar", |_req, resp| {
-            resp.status(403)
-                .status_message("No permissions")
-                .send_str("You have no permissions to access this page")?;
+        .fn_handler("/", Method::Get, |req| {
+            req.into_ok_response()?
+                .write_all("Hello from Rust!".as_bytes())?;
 
             Ok(())
         })?
-        .handle_get("/panic", |_req, _resp| panic!("User requested a panic!"))?;
+        .fn_handler("/foo", Method::Get, |_req| {
+            Result::Err("Boo, something happened!".into())
+        })?
+        .fn_handler("/bar", Method::Get, |req| {
+            req.into_response(403, Some("No permissions"), &[])?
+                .write_all("You have no permissions to access this page".as_bytes())?;
+
+            Ok(())
+        })?
+        .fn_handler("/panic", Method::Get, |_req| {
+            panic!("User requested a panic!")
+        })?;
 
     #[cfg(esp32s2)]
     httpd_ulp_endpoints(&mut server, mutex)?;
@@ -1307,11 +1263,14 @@ fn start_ulp(mut ulp: esp_idf_hal::ulp::ULP, cycles: u32) -> Result<()> {
 #[cfg(not(feature = "qemu"))]
 #[allow(dead_code)]
 fn wifi(
-    netif_stack: Arc<EspNetifStack>,
-    sys_loop_stack: Arc<EspSysLoopStack>,
-    default_nvs: Arc<EspDefaultNvs>,
-) -> Result<Box<EspWifi>> {
-    let mut wifi = Box::new(EspWifi::new(netif_stack, sys_loop_stack, default_nvs)?);
+    modem: impl peripheral::Peripheral<P = esp_idf_hal::modem::Modem> + 'static,
+    sysloop: EspSystemEventLoop,
+) -> Result<Box<EspWifi<'static>>> {
+    use std::net::Ipv4Addr;
+
+    use esp_idf_svc::handle::RawHandle;
+
+    let mut wifi = Box::new(EspWifi::new(modem, sysloop.clone(), None)?);
 
     info!("Wifi created, about to scan");
 
@@ -1347,65 +1306,81 @@ fn wifi(
         },
     ))?;
 
-    info!("Wifi configuration set, about to get status");
+    wifi.start()?;
 
-    wifi.wait_status_with_timeout(Duration::from_secs(20), |status| !status.is_transitional())
-        .map_err(|e| anyhow::anyhow!("Unexpected Wifi status: {:?}", e))?;
+    info!("Starting wifi...");
 
-    let status = wifi.get_status();
-
-    if let Status(
-        ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(ip_settings))),
-        ApStatus::Started(ApIpStatus::Done),
-    ) = status
+    if !WifiWait::new(&sysloop)?
+        .wait_with_timeout(Duration::from_secs(20), || wifi.is_started().unwrap())
     {
-        info!("Wifi connected");
-
-        ping(&ip_settings)?;
-    } else {
-        bail!("Unexpected Wifi status: {:?}", status);
+        bail!("Wifi did not start");
     }
+
+    info!("Connecting wifi...");
+
+    wifi.connect()?;
+
+    if !EspNetifWait::new::<EspNetif>(wifi.sta_netif(), &sysloop)?.wait_with_timeout(
+        Duration::from_secs(20),
+        || {
+            wifi.is_connected().unwrap()
+                && wifi.sta_netif().get_ip_info().unwrap().ip != Ipv4Addr::new(0, 0, 0, 0)
+        },
+    ) {
+        bail!("Wifi did not connect or did not receive a DHCP lease");
+    }
+
+    let ip_info = wifi.sta_netif().get_ip_info()?;
+
+    info!("Wifi DHCP info: {:?}", ip_info);
+
+    ping(ip_info.subnet.gateway)?;
 
     Ok(wifi)
 }
 
 #[cfg(any(feature = "qemu", feature = "w5500", feature = "ip101"))]
-fn eth_configure<HW>(mut eth: Box<EspEth<HW>>) -> Result<Box<EspEth<HW>>> {
+fn eth_configure(
+    sysloop: &EspSystemEventLoop,
+    mut eth: Box<EspEth<'static>>,
+) -> Result<Box<EspEth<'static>>> {
+    use std::net::Ipv4Addr;
+
     info!("Eth created");
 
-    eth.set_configuration(&eth::Configuration::Client(Default::default()))?;
+    eth.start()?;
 
-    info!("Eth configuration set, about to get status");
+    info!("Starting eth...");
 
-    eth.wait_status_with_timeout(Duration::from_secs(10), |status| !status.is_transitional())
-        .map_err(|e| anyhow::anyhow!("Unexpected Eth status: {:?}", e))?;
-
-    let status = eth.get_status();
-
-    if let eth::Status::Started(eth::ConnectionStatus::Connected(eth::IpStatus::Done(Some(
-        ip_settings,
-    )))) = status
+    if !EthWait::new(eth.driver(), sysloop)?
+        .wait_with_timeout(Duration::from_secs(20), || eth.is_started().unwrap())
     {
-        info!("Eth connected");
-
-        ping(&ip_settings)?;
-    } else {
-        bail!("Unexpected Eth status: {:?}", status);
+        bail!("Eth did not start");
     }
+
+    if !EspNetifWait::new::<EspNetif>(eth.netif(), &sysloop)?
+        .wait_with_timeout(Duration::from_secs(20), || {
+            eth.netif().get_ip_info().unwrap().ip != Ipv4Addr::new(0, 0, 0, 0)
+        })
+    {
+        bail!("Eth did not receive a DHCP lease");
+    }
+
+    let ip_info = eth.netif().get_ip_info()?;
+
+    info!("Eth DHCP info: {:?}", ip_info);
+
+    ping(ip_info.subnet.gateway)?;
 
     Ok(eth)
 }
 
-fn ping(ip_settings: &ipv4::ClientSettings) -> Result<()> {
-    info!("About to do some pings for {:?}", ip_settings);
+fn ping(ip: ipv4::Ipv4Addr) -> Result<()> {
+    info!("About to do some pings for {:?}", ip);
 
-    let ping_summary =
-        ping::EspPing::default().ping(ip_settings.subnet.gateway, &Default::default())?;
+    let ping_summary = ping::EspPing::default().ping(ip, &Default::default())?;
     if ping_summary.transmitted != ping_summary.received {
-        bail!(
-            "Pinging gateway {} resulted in timeouts",
-            ip_settings.subnet.gateway
-        );
+        bail!("Pinging IP {} resulted in timeouts", ip);
     }
 
     info!("Pinging done");
@@ -1416,68 +1391,46 @@ fn ping(ip_settings: &ipv4::ClientSettings) -> Result<()> {
 #[cfg(not(feature = "qemu"))]
 #[cfg(esp_idf_lwip_ipv4_napt)]
 fn enable_napt(wifi: &mut EspWifi) -> Result<()> {
-    wifi.with_router_netif_mut(|netif| netif.unwrap().enable_napt(true));
+    wifi.ap_netif_mut().enable_napt(true);
 
     info!("NAPT enabled on the WiFi SoftAP!");
 
     Ok(())
 }
 
-// Kaluga needs customized screen orientation commands
-// (not a surprise; quite a few ILI9341 boards need these as evidenced in the TFT_eSPI & lvgl ESP32 C drivers)
-pub enum KalugaOrientation {
-    Portrait,
-    PortraitFlipped,
-    Landscape,
-    LandscapeFlipped,
-}
-
-impl ili9341::Mode for KalugaOrientation {
-    fn mode(&self) -> u8 {
-        match self {
-            Self::Portrait => 0,
-            Self::Landscape => 0x20 | 0x40,
-            Self::PortraitFlipped => 0x80 | 0x40,
-            Self::LandscapeFlipped => 0x80 | 0x20,
-        }
-    }
-
-    fn is_landscape(&self) -> bool {
-        matches!(self, Self::Landscape | Self::LandscapeFlipped)
-    }
-}
-
 #[cfg(feature = "waveshare_epd")]
 fn waveshare_epd_hello_world(
-    spi: spi::SPI2,
-    sclk: gpio::Gpio13<gpio::Unknown>,
-    sdo: gpio::Gpio14<gpio::Unknown>,
-    cs: gpio::Gpio15<gpio::Unknown>,
-    busy_in: gpio::Gpio25<gpio::Unknown>,
-    dc: gpio::Gpio27<gpio::Unknown>,
-    rst: gpio::Gpio26<gpio::Unknown>,
+    spi: impl peripheral::Peripheral<P = impl spi::SpiAnyPins> + 'static,
+    sclk: gpio::AnyOutputPin,
+    sdo: gpio::AnyOutputPin,
+    cs: gpio::AnyOutputPin,
+    busy_in: gpio::AnyInputPin,
+    dc: gpio::AnyOutputPin,
+    rst: gpio::AnyOutputPin,
 ) -> Result<()> {
     info!("About to initialize Waveshare 4.2 e-paper display");
-    let cs = cs.into_output().unwrap();
-    let busy_in = busy_in.into_input().unwrap();
-    let dc = dc.into_output().unwrap();
-    let rst = rst.into_output().unwrap();
 
-    let config = <spi::config::Config as Default>::default().baudrate(26.MHz().into());
-
-    let mut my_spi = spi::Master::<spi::SPI2, _, _, _, _>::new(
+    let mut driver = spi::SpiDeviceDriver::new_single(
         spi,
-        spi::Pins {
-            sclk: sclk,
-            sdo: sdo,
-            sdi: Option::<gpio::Gpio12<gpio::Unknown>>::None,
-            cs: Option::<gpio::Gpio15<gpio::Unknown>>::None,
-        },
-        config,
+        sclk,
+        sdo,
+        Option::<gpio::AnyIOPin>::None,
+        spi::Dma::Disabled,
+        Option::<gpio::AnyOutputPin>::None,
+        &spi::SpiConfig::new().baudrate(26.MHz().into()),
+    )?;
+
+    // Setup EPD
+    let mut epd = Epd4in2::new(
+        &mut driver,
+        gpio::PinDriver::output(cs)?,
+        gpio::PinDriver::input(busy_in)?,
+        gpio::PinDriver::output(dc)?,
+        gpio::PinDriver::output(rst)?,
+        &mut delay::Ets,
     )
     .unwrap();
-    // Setup EPD
-    let mut epd = Epd4in2::new(&mut my_spi, cs, busy_in, dc, rst, &mut delay::Ets).unwrap();
+
     // Use display graphics from embedded-graphics
     let mut buffer =
         vec![DEFAULT_BACKGROUND_COLOR.get_byte_value(); WIDTH as usize / 8 * HEIGHT as usize];
@@ -1489,8 +1442,8 @@ fn waveshare_epd_hello_world(
     Text::new("Hello Rust!", Point::new(20, 30), style).draw(&mut display)?;
 
     // Display updated frame
-    epd.update_frame(&mut my_spi, &display.buffer(), &mut delay::Ets)?;
-    epd.display_frame(&mut my_spi, &mut delay::Ets)?;
+    epd.update_frame(&mut driver, &display.buffer(), &mut delay::Ets)?;
+    epd.display_frame(&mut driver, &mut delay::Ets)?;
 
     Ok(())
 }
