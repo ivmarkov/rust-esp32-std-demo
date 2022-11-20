@@ -67,7 +67,7 @@ anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
 url = "2"
 esp-idf-sys = { version = "0.31.11", features = ["binstart"] }
-esp-idf-svc = "0.43"
+esp-idf-svc = "0.43.1"
 esp-idf-hal = "0.39"
 embedded-svc = "0.23"
 embedded-hal = "0.2"
