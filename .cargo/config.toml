@@ -33,10 +33,10 @@ build-std = ["std", "panic_abort"]
 #build-std-features = ["panic_immediate_abort"] # Only necessary if building against ESP-IDF tag `v4.3.2` (the minimum supported version)
 
 [env]
-# Uncomment this and use the esp-idf-sys "native" build feature (`cargo build --features native`) to build against ESP-IDF 5.0 (master)
+# Uncomment this to build against ESP-IDF 5.0 (master)
 #ESP_IDF_VERSION = { value = "master" }
 
-# Comment out this when using the PlatformIO build (it only supports `v4.3.2`)
+# Comment out this when using the PlatformIO build, i.e. `cargo build --features pio` (it only supports `v4.3.2`)
 ESP_IDF_VERSION = { value = "release/v4.4" }
 
 # These configurations will pick up your custom "sdkconfig.release", "sdkconfig.debug" or "sdkconfig.defaults[.*]" files
