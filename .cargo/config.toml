@@ -33,14 +33,17 @@ build-std = ["std", "panic_abort"]
 #build-std-features = ["panic_immediate_abort"] # Only necessary if building against ESP-IDF tag `v4.3.2` (the minimum supported version)
 
 [env]
+# Select ESP IDF version in embuild's format described here:
+# https://github.com/esp-rs/esp-idf-sys/blob/master/README.md#esp_idf_version-esp_idf_version-native-builder-only
+#
 # Uncomment this to build against ESP-IDF master (currently unreleased ESP IDF 5.1)
 #ESP_IDF_VERSION = "master"
 # Don't forget to uncomment also the `rustflags` parameter in your "target" section above
-
+#
 # Uncomment this to build against ESP-IDF 5.0
 # Don't forget to uncomment also the `rustflags` parameter in your "target" section above
 #ESP_IDF_VERSION = "release/v5.0"
-
+#
 # Comment out this when using the PlatformIO build, i.e. `cargo build --features pio` (it only supports `v4.3.2`)
 ESP_IDF_VERSION = "release/v4.4"
 
