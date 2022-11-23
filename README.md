@@ -91,7 +91,7 @@ Highlights:
   - `http://<printed-ip-address>/bar`
   - `http://<printed-ip-address>/ulp` (ESP32-S2 only)
 
-- Alternatively you can connect directly to the ESP Accesspoint by connecting the the 'aptest' network using the default IP address: 
+- Alternatively you can connect directly to the ESP Accesspoint by connecting to the 'aptest' network using the default IP address: 
   - `http://192.168.71.1`
 
 - The monitor should output more or less the following:
