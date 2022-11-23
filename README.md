@@ -36,7 +36,7 @@ Highlights:
 - Enter it: `cd rust-esp32-std-demo`
 - Export two environment variables that would contain the SSID & password of your wireless network:
   - `export RUST_ESP32_STD_DEMO_WIFI_SSID=<ssid>`
-  - `export RUST_ESP32_STD_DEMO_WIFI_PASS=<ssid>`
+  - `export RUST_ESP32_STD_DEMO_WIFI_PASS=<password>`
 - To configure the demo for your particular board, please uncomment the relevant [Rust target for your board](https://github.com/ivmarkov/rust-esp32-std-demo/blob/main/.cargo/config.toml#L2) and comment the others. Alternatively, just append the `--target <target>` flag to all `cargo build` lines below.
 - Build: `cargo build` or `cargo build --release`
   - (Only if you happen to have a [TTGO T-Display board](http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1126&FId=t3:50033:3)): Add `ttgo` to the `--features` build flags above (as in `cargo build --features ttgo`) to be greeted with a `Hello Rust!` message on the board's LED screen
@@ -79,7 +79,9 @@ Highlights:
 ## Monitor
 
 - Once flashed, the board can be connected with any suitable serial monitor, e.g.:
-  - (Recommended) `espflash`: `espflash serial-monitor`
+  - ESPMonitor: `espmonitor /dev/ttyUSB0` (you need to `cargo install espmonitor` first)
+  - Cargo PIO (this one **decodes stack traces**!): `cargo pio espidf monitor /dev/ttyUSB0` (you need to `cargo install cargo-pio` first)
+    - Please run it from within the `rust-esp32-std-demo` project directory, or else the built ELF file will not be detected, and the stack traces will not be decoded!
   - Built-in Linux/MacOS screen: `screen /dev/ttyUSB0 115200` (use `Ctrl+A` and then type `:quit` to stop it)
   - Miniterm: `miniterm --raw /dev/ttyUSB0 115200`
 
@@ -90,6 +92,9 @@ Highlights:
   - `http://<printed-ip-address>/foo?key=value`
   - `http://<printed-ip-address>/bar`
   - `http://<printed-ip-address>/ulp` (ESP32-S2 only)
+
+- Alternatively you can connect directly to the ESP Accesspoint by connecting the the 'aptest' network using the default IP address: 
+  - `http://192.168.71.1`
 
 - The monitor should output more or less the following:
 ```
