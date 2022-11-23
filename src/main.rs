@@ -248,6 +248,7 @@ fn main() -> Result<()> {
             pins.gpio12,
             pins.gpio26,
             pins.gpio27,
+            esp_idf_hal::spi::Dma::Disabled,
             Some(pins.gpio14),
             Some(pins.gpio25),
             SpiEthChipset::W5500,
@@ -294,7 +295,7 @@ fn main() -> Result<()> {
 
     let mut wait = mutex.0.lock().unwrap();
 
-    #[cfg(esp32)]
+    #[cfg(all(esp32, esp_idf_version_major = "4"))]
     let mut hall_sensor = peripherals.hall_sensor;
 
     #[cfg(esp32)]
@@ -320,7 +321,7 @@ fn main() -> Result<()> {
                 .unwrap()
                 .0;
 
-            #[cfg(esp32)]
+            #[cfg(all(esp32, esp_idf_version_major = "4"))]
             log::info!(
                 "Hall sensor reading: {}mV",
                 powered_adc1.read_hall(&mut hall_sensor).unwrap()
