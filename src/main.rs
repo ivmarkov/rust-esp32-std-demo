@@ -665,8 +665,8 @@ fn test_mqtt_client() -> Result<EspMqttClient<ConnState<MessageImpl, EspError>>>
 
 #[cfg(feature = "experimental")]
 mod experimental {
-    use std::{thread, net::TcpListener, net::TcpStream};
     use log::info;
+    use std::{net::TcpListener, net::TcpStream, thread};
 
     use esp_idf_sys::c_types;
 
