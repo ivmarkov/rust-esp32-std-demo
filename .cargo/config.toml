@@ -48,5 +48,5 @@ ESP_IDF_VERSION = "release/v4.4"
 # that you might put in the root of the project
 # The easiest way to generate a full "sdkconfig" configuration (as opposed to manually enabling only the necessary flags via "sdkconfig.defaults[.*]"
 # is by running "cargo pio espidf menuconfig" (that is, if using the pio builder)
-#ESP_IDF_SDKCONFIG = { value = "sdkconfig.release;sdkconfig.debug" }
-ESP_IDF_SDKCONFIG_DEFAULTS = { value = "sdkconfig.defaults;sdkconfig.defaults.esp32;sdkconfig.defaults.esp32s2" }
+#ESP_IDF_SDKCONFIG = "sdkconfig.release;sdkconfig.debug"
+ESP_IDF_SDKCONFIG_DEFAULTS = "sdkconfig.defaults;sdkconfig.defaults.esp32;sdkconfig.defaults.esp32s2"

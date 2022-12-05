@@ -368,7 +368,7 @@ fn test_print() {
 
     children.push("foo");
     children.push("bar");
-    println!("More complex print {:?}", children);
+    println!("More complex print {children:?}");
 }
 
 #[allow(deprecated)]
@@ -385,7 +385,7 @@ fn test_atomics() {
         (r1, r2)
     };
 
-    println!("Result: {}, {}", r1, r2);
+    println!("Result: {r1}, {r2}");
 }
 
 fn test_threads() {
@@ -555,7 +555,7 @@ fn test_timer(
                 "rust-esp32-std-demo",
                 QoS::AtMostOnce,
                 false,
-                format!("Now is {:?}", now).as_bytes(),
+                format!("Now is {now:?}").as_bytes(),
             )
             .unwrap();
     })?;
