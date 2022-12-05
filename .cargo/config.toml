@@ -7,37 +7,42 @@ target = "xtensa-esp32-espidf"
 
 [target.xtensa-esp32-espidf]
 linker = "ldproxy"
-# Uncomment for ESP-IDF 5 and later
+# Uncomment for ESP-IDF 5 and later. Don't forget to also uncomment the `ESP_IDF_VERSION = "release/v5.0"`parameter in the `[env]` section below
 #rustflags = ["--cfg", "espidf_time64"]
 
 [target.xtensa-esp32s2-espidf]
 linker = "ldproxy"
-# Uncomment for ESP-IDF 5 and later
+# Uncomment for ESP-IDF 5 and later. Don't forget to also uncomment the `ESP_IDF_VERSION = "release/v5.0"`parameter in the `[env]` section below
 #rustflags = ["--cfg", "espidf_time64"]
 
 [target.xtensa-esp32s3-espidf]
 linker = "ldproxy"
-# Uncomment for ESP-IDF 5 and later
+# Uncomment for ESP-IDF 5 and later. Don't forget to also uncomment the `ESP_IDF_VERSION = "release/v5.0"`parameter in the `[env]` section below
 #rustflags = ["--cfg", "espidf_time64"]
 
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
-# Uncomment for ESP-IDF 5 and later
-#rustflags = ["--cfg", "espidf_time64", "-C", "default-linker-libraries"]
 # Future - necessary for the experimental "native build" of esp-idf-sys with ESP32C3
 # See also https://github.com/ivmarkov/embuild/issues/16
 rustflags = ["-C", "default-linker-libraries"]
+# Uncomment for ESP-IDF 5 and later. Don't forget to also uncomment the `ESP_IDF_VERSION = "release/v5.0"`parameter in the `[env]` section below
+#rustflags = ["--cfg", "espidf_time64", "-C", "default-linker-libraries"]
 
 [unstable]
 build-std = ["std", "panic_abort"]
 #build-std-features = ["panic_immediate_abort"] # Only necessary if building against ESP-IDF tag `v4.3.2` (the minimum supported version)
 
 [env]
-# Uncomment this to build against ESP-IDF 5.0 (master)
-#ESP_IDF_VERSION = { value = "master" }
+# Uncomment this to build against ESP-IDF master (currently unreleased ESP IDF 5.1)
+#ESP_IDF_VERSION = "master"
+# Don't forget to uncomment also the `rustflags` parameter in your "target" section above
+
+# Uncomment this to build against ESP-IDF 5.0
+# Don't forget to uncomment also the `rustflags` parameter in your "target" section above
+#ESP_IDF_VERSION = "release/v5.0"
 
 # Comment out this when using the PlatformIO build, i.e. `cargo build --features pio` (it only supports `v4.3.2`)
-ESP_IDF_VERSION = { value = "release/v4.4" }
+ESP_IDF_VERSION = "release/v4.4"
 
 # These configurations will pick up your custom "sdkconfig.release", "sdkconfig.debug" or "sdkconfig.defaults[.*]" files
 # that you might put in the root of the project

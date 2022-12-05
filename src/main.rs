@@ -54,7 +54,6 @@ use embedded_svc::timer::*;
 use embedded_svc::utils::mqtt::client::ConnState;
 use embedded_svc::wifi::*;
 
-use esp_idf_svc::eth::*;
 use esp_idf_svc::eventloop::*;
 use esp_idf_svc::httpd as idf;
 use esp_idf_svc::httpd::ServerRegistry;
@@ -211,7 +210,7 @@ fn main() -> Result<()> {
     #[cfg(feature = "qemu")]
     let eth = eth_configure(
         &sysloop,
-        Box::new(EspEth::wrap(EthDriver::new_openeth(
+        Box::new(esp_idf_svc::eth::EspEth::wrap(EthDriver::new_openeth(
             peripherals.mac,
             sysloop.clone(),
         )?)?),
@@ -221,7 +220,7 @@ fn main() -> Result<()> {
     #[cfg(feature = "ip101")]
     let eth = eth_configure(
         &sysloop,
-        Box::new(EspEth::wrap(EthDriver::new_rmii(
+        Box::new(esp_idf_svc::eth::EspEth::wrap(EthDriver::new_rmii(
             peripherals.mac,
             pins.gpio25,
             pins.gpio26,
@@ -242,7 +241,7 @@ fn main() -> Result<()> {
     #[cfg(feature = "w5500")]
     let eth = eth_configure(
         &sysloop,
-        Box::new(EspEth::wrap(EthDriver::new_spi(
+        Box::new(esp_idf_svc::eth::EspEth::wrap(EthDriver::new_spi(
             peripherals.spi2,
             pins.gpio13,
             pins.gpio12,
@@ -666,7 +665,7 @@ fn test_mqtt_client() -> Result<EspMqttClient<ConnState<MessageImpl, EspError>>>
 
 #[cfg(feature = "experimental")]
 mod experimental {
-    use super::{thread, TcpListener, TcpStream};
+    use std::{thread, net::TcpListener, net::TcpStream};
     use log::info;
 
     use esp_idf_sys::c_types;
