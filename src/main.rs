@@ -108,6 +108,8 @@ thread_local! {
     static TLS: RefCell<u32> = RefCell::new(13);
 }
 
+static CS: esp_idf_hal::task::CriticalSection = esp_idf_hal::task::CriticalSection::new();
+
 fn main() -> Result<()> {
     esp_idf_sys::link_patches();
 
@@ -132,6 +134,48 @@ fn main() -> Result<()> {
     let peripherals = Peripherals::take().unwrap();
     #[allow(unused)]
     let pins = peripherals.pins;
+
+    // If interrupt critical sections work fine, the code below should panic with the IWDT triggering
+    // {
+    //     info!("Testing interrupt critical sections");
+
+    //     let mut x = 0;
+
+    //     esp_idf_hal::interrupt::free(move || {
+    //         for _ in 0..2000000 {
+    //             for _ in 0..2000000 {
+    //                 x += 1;
+
+    //                 if x == 1000000 {
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     });
+    // }
+
+    {
+        info!("Testing critical sections");
+
+        {
+            let th = {
+                let _guard = CS.enter();
+
+                let th = std::thread::spawn(move || {
+                    info!("Waiting for critical section");
+                    let _guard = CS.enter();
+
+                    info!("Critical section acquired");
+                });
+
+                std::thread::sleep(Duration::from_secs(5));
+
+                th
+            };
+
+            th.join().unwrap();
+        }
+    }
 
     #[allow(unused)]
     let sysloop = EspSystemEventLoop::take()?;
