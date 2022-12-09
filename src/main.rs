@@ -22,6 +22,8 @@ compile_error!(
     "The `esp32s3_usb_otg` feature can only be built for the `xtensa-esp32s3-espidf` target."
 );
 
+use core::ffi;
+
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -74,7 +76,7 @@ use esp_idf_hal::peripheral;
 use esp_idf_hal::prelude::*;
 use esp_idf_hal::spi;
 
-use esp_idf_sys::{self, c_types};
+use esp_idf_sys;
 use esp_idf_sys::{esp, EspError};
 
 use display_interface_spi::SPIInterfaceNoCS;
@@ -619,7 +621,7 @@ impl EventLoopMessage {
 }
 
 impl EspTypedEventSource for EventLoopMessage {
-    fn source() -> *const c_types::c_char {
+    fn source() -> *const ffi::c_char {
         b"DEMO-SERVICE\0".as_ptr() as *const _
     }
 }
@@ -709,10 +711,10 @@ fn test_mqtt_client() -> Result<EspMqttClient<ConnState<MessageImpl, EspError>>>
 
 #[cfg(feature = "experimental")]
 mod experimental {
+    use core::ffi;
+
     use log::info;
     use std::{net::TcpListener, net::TcpStream, thread};
-
-    use esp_idf_sys::c_types;
 
     pub fn test() -> anyhow::Result<()> {
         #[cfg(not(esp_idf_version = "4.3"))]
