@@ -1181,8 +1181,38 @@ fn httpd_ulp_endpoints(
 fn httpd(
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
 ) -> Result<esp_idf_svc::http::server::EspHttpServer> {
-    use embedded_svc::http::server::{Method, Request, Response};
+    use embedded_svc::http::server::{
+        handler, Connection, FnHandler, Handler, HandlerResult, Method, Middleware, Request,
+        Response,
+    };
     use embedded_svc::io::Write;
+    use esp_idf_svc::http::server::EspHttpConnection;
+
+    struct SampleMiddleware {}
+
+    impl<C> Middleware<C> for SampleMiddleware
+    where
+        C: Connection,
+    {
+        fn handle<'a, H>(&'a self, connection: C, handler: &'a H) -> HandlerResult
+        where
+            H: Handler<C>,
+        {
+            info!("Middleware called");
+
+            handler.handle(connection)
+        }
+    }
+
+    // Necessary, until I figure out a more decent solution that does not
+    // refer to `EspHttpConnection`, but to the Connection trait instead
+    // (if at all possible)
+    fn fix_hrtb<F>(f: F) -> F
+    where
+        F: for<'a, 'b> Fn(Request<&'a mut EspHttpConnection<'b>>) -> HandlerResult,
+    {
+        f
+    }
 
     let mut server = esp_idf_svc::http::server::EspHttpServer::new(&Default::default())?;
 
@@ -1202,9 +1232,19 @@ fn httpd(
 
             Ok(())
         })?
-        .fn_handler("/panic", Method::Get, |_req| {
+        .fn_handler("/panic", Method::Get, |req| {
             panic!("User requested a panic!")
-        })?;
+        })?
+        .handler(
+            "/middleware",
+            Method::Get,
+            SampleMiddleware {}.compose(handler(fix_hrtb(|req| {
+                req.into_ok_response()?
+                    .write_all("Middleware handler called".as_bytes())?;
+
+                Ok(())
+            }))),
+        )?;
 
     #[cfg(esp32s2)]
     httpd_ulp_endpoints(&mut server, mutex)?;
