@@ -1182,11 +1182,10 @@ fn httpd(
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
 ) -> Result<esp_idf_svc::http::server::EspHttpServer> {
     use embedded_svc::http::server::{
-        handler, Connection, FnHandler, Handler, HandlerResult, Method, Middleware, Request,
-        Response,
+        Connection, Handler, HandlerResult, Method, Middleware, Query, Request, Response,
     };
     use embedded_svc::io::Write;
-    use esp_idf_svc::http::server::EspHttpConnection;
+    use esp_idf_svc::http::server::{fn_handler, EspHttpConnection, EspHttpServer};
 
     struct SampleMiddleware {}
 
@@ -1194,27 +1193,48 @@ fn httpd(
     where
         C: Connection,
     {
-        fn handle<'a, H>(&'a self, connection: C, handler: &'a H) -> HandlerResult
+        fn handle<'a, H>(&'a self, connection: &'a mut C, handler: &'a H) -> HandlerResult
         where
             H: Handler<C>,
         {
-            info!("Middleware called");
+            let req = Request::wrap(connection);
+
+            info!("Middleware called with uri: {}", req.uri());
+
+            let connection = req.release();
+
+            if let Err(err) = handler.handle(connection) {
+                if !connection.is_response_initiated() {
+                    let mut resp = Request::wrap(connection).into_status_response(500)?;
+
+                    write!(&mut resp, "ERROR: {}", err)?;
+                } else {
+                    // Nothing can be done as the error happened after the response was initiated, propagate further
+                    return Err(err);
+                }
+            }
+
+            Ok(())
+        }
+    }
+
+    struct SampleMiddleware2 {}
+
+    impl<C> Middleware<C> for SampleMiddleware2
+    where
+        C: Connection,
+    {
+        fn handle<'a, H>(&'a self, connection: &'a mut C, handler: &'a H) -> HandlerResult
+        where
+            H: Handler<C>,
+        {
+            info!("Middleware2 called");
 
             handler.handle(connection)
         }
     }
 
-    // Necessary, until I figure out a more decent solution that does not
-    // refer to `EspHttpConnection`, but to the Connection trait instead
-    // (if at all possible)
-    fn fix_hrtb<F>(f: F) -> F
-    where
-        F: for<'a, 'b> Fn(Request<&'a mut EspHttpConnection<'b>>) -> HandlerResult,
-    {
-        f
-    }
-
-    let mut server = esp_idf_svc::http::server::EspHttpServer::new(&Default::default())?;
+    let mut server = EspHttpServer::new(&Default::default())?;
 
     server
         .fn_handler("/", Method::Get, |req| {
@@ -1223,7 +1243,7 @@ fn httpd(
 
             Ok(())
         })?
-        .fn_handler("/foo", Method::Get, |_req| {
+        .fn_handler("/foo", Method::Get, |_| {
             Result::Err("Boo, something happened!".into())
         })?
         .fn_handler("/bar", Method::Get, |req| {
@@ -1232,15 +1252,20 @@ fn httpd(
 
             Ok(())
         })?
-        .fn_handler("/panic", Method::Get, |req| {
-            panic!("User requested a panic!")
-        })?
+        .fn_handler("/panic", Method::Get, |_| panic!("User requested a panic!"))?
         .handler(
             "/middleware",
             Method::Get,
-            SampleMiddleware {}.compose(handler(fix_hrtb(|req| {
+            SampleMiddleware {}.compose(fn_handler(|_| {
+                Result::Err("Boo, something happened!".into())
+            })),
+        )?
+        .handler(
+            "/middleware2",
+            Method::Get,
+            SampleMiddleware2 {}.compose(SampleMiddleware {}.compose(fn_handler(|req| {
                 req.into_ok_response()?
-                    .write_all("Middleware handler called".as_bytes())?;
+                    .write_all("Middleware2 handler called".as_bytes())?;
 
                 Ok(())
             }))),
