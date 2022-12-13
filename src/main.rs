@@ -1207,7 +1207,7 @@ fn httpd(
                 if !connection.is_response_initiated() {
                     let mut resp = Request::wrap(connection).into_status_response(500)?;
 
-                    write!(&mut resp, "ERROR: {}", err)?;
+                    write!(&mut resp, "ERROR: {err}")?;
                 } else {
                     // Nothing can be done as the error happened after the response was initiated, propagate further
                     return Err(err);
