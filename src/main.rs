@@ -256,52 +256,55 @@ fn main() -> Result<()> {
     #[cfg(feature = "qemu")]
     let eth = eth_configure(
         &sysloop,
-        Box::new(esp_idf_svc::eth::EspEth::wrap(EthDriver::new_openeth(
-            peripherals.mac,
-            sysloop.clone(),
-        )?)?),
+        Box::new(esp_idf_svc::eth::EspEth::wrap(
+            esp_idf_svc::eth::EthDriver::new_openeth(peripherals.mac, sysloop.clone())?,
+        )?),
     )?;
 
     #[allow(clippy::redundant_clone)]
     #[cfg(feature = "ip101")]
     let eth = eth_configure(
         &sysloop,
-        Box::new(esp_idf_svc::eth::EspEth::wrap(EthDriver::new_rmii(
-            peripherals.mac,
-            pins.gpio25,
-            pins.gpio26,
-            pins.gpio27,
-            pins.gpio23,
-            pins.gpio22,
-            pins.gpio21,
-            pins.gpio19,
-            pins.gpio18,
-            RmiiClockConfig::<gpio::Gpio0, gpio::Gpio16, gpio::Gpio17>::Input(pins.gpio0),
-            Some(pins.gpio5),
-            RmiiEthChipset::IP101,
-            None,
-            sysloop.clone(),
-        )?)?),
+        Box::new(esp_idf_svc::eth::EspEth::wrap(
+            esp_idf_svc::eth::EthDriver::new_rmii(
+                peripherals.mac,
+                pins.gpio25,
+                pins.gpio26,
+                pins.gpio27,
+                pins.gpio23,
+                pins.gpio22,
+                pins.gpio21,
+                pins.gpio19,
+                pins.gpio18,
+                RmiiClockConfig::<gpio::Gpio0, gpio::Gpio16, gpio::Gpio17>::Input(pins.gpio0),
+                Some(pins.gpio5),
+                esp_idf_svc::eth::RmiiEthChipset::IP101,
+                None,
+                sysloop.clone(),
+            )?,
+        )?),
     )?;
 
     #[cfg(feature = "w5500")]
     let eth = eth_configure(
         &sysloop,
-        Box::new(esp_idf_svc::eth::EspEth::wrap(EthDriver::new_spi(
-            peripherals.spi2,
-            pins.gpio13,
-            pins.gpio12,
-            pins.gpio26,
-            pins.gpio27,
-            esp_idf_hal::spi::Dma::Disabled,
-            Some(pins.gpio14),
-            Some(pins.gpio25),
-            SpiEthChipset::W5500,
-            20.MHz().into(),
-            Some(&[0x02, 0x00, 0x00, 0x12, 0x34, 0x56]),
-            None,
-            sysloop.clone(),
-        )?)?),
+        Box::new(esp_idf_svc::eth::EspEth::wrap(
+            esp_idf_svc::eth::EthDriver::new_spi(
+                peripherals.spi2,
+                pins.gpio13,
+                pins.gpio12,
+                pins.gpio26,
+                pins.gpio27,
+                esp_idf_hal::spi::Dma::Auto(4096),
+                Some(pins.gpio14),
+                Some(pins.gpio25),
+                esp_idf_svc::eth::SpiEthChipset::W5500,
+                20.MHz().into(),
+                Some(&[0x02, 0x00, 0x00, 0x12, 0x34, 0x56]),
+                None,
+                sysloop.clone(),
+            )?,
+        )?),
     )?;
 
     test_tcp()?;
@@ -1453,8 +1456,8 @@ fn wifi(
 #[cfg(any(feature = "qemu", feature = "w5500", feature = "ip101"))]
 fn eth_configure(
     sysloop: &EspSystemEventLoop,
-    mut eth: Box<EspEth<'static>>,
-) -> Result<Box<EspEth<'static>>> {
+    mut eth: Box<esp_idf_svc::eth::EspEth<'static>>,
+) -> Result<Box<esp_idf_svc::eth::EspEth<'static>>> {
     use std::net::Ipv4Addr;
 
     info!("Eth created");
@@ -1463,7 +1466,7 @@ fn eth_configure(
 
     info!("Starting eth...");
 
-    if !EthWait::new(eth.driver(), sysloop)?
+    if !esp_idf_svc::eth::EthWait::new(eth.driver(), sysloop)?
         .wait_with_timeout(Duration::from_secs(20), || eth.is_started().unwrap())
     {
         bail!("Eth did not start");
