@@ -276,7 +276,9 @@ fn main() -> Result<()> {
                 pins.gpio21,
                 pins.gpio19,
                 pins.gpio18,
-                RmiiClockConfig::<gpio::Gpio0, gpio::Gpio16, gpio::Gpio17>::Input(pins.gpio0),
+                esp_idf_svc::eth::RmiiClockConfig::<gpio::Gpio0, gpio::Gpio16, gpio::Gpio17>::Input(
+                    pins.gpio0,
+                ),
                 Some(pins.gpio5),
                 esp_idf_svc::eth::RmiiEthChipset::IP101,
                 None,
