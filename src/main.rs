@@ -350,7 +350,7 @@ fn main() -> Result<()> {
 
     #[cfg(esp32)]
     let adc_pin = pins.gpio34;
-    #[cfg(any(esp32s2, esp32s3, esp32c3))]
+    #[cfg(not(esp32))]
     let adc_pin = pins.gpio2;
 
     let mut a2 = adc::AdcChannelDriver::<_, adc::Atten11dB<adc::ADC1>>::new(adc_pin)?;
