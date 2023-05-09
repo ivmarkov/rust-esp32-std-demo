@@ -585,7 +585,7 @@ fn test_timer(
     use embedded_svc::event_bus::Postbox;
 
     info!("About to schedule a one-shot timer for after 2 seconds");
-    let once_timer = EspTimerService::new()?.timer(|| {
+    let once_timer = EspTaskTimerService::new()?.timer(|| {
         info!("One-shot timer triggered");
     })?;
 
@@ -594,7 +594,7 @@ fn test_timer(
     thread::sleep(Duration::from_secs(3));
 
     info!("About to schedule a periodic timer every five seconds");
-    let periodic_timer = EspTimerService::new()?.timer(move || {
+    let periodic_timer = EspTaskTimerService::new()?.timer(move || {
         info!("Tick from periodic timer");
 
         let now = EspSystemTime {}.now();
