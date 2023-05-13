@@ -31,7 +31,7 @@ use std::path::PathBuf;
 use std::sync::{Condvar, Mutex};
 use std::{cell::RefCell, env, sync::atomic::*, sync::Arc, thread, time::*};
 
-use anyhow::bail;
+use anyhow::{bail, Result};
 
 use log::*;
 
@@ -44,8 +44,6 @@ use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::digital::v2::OutputPin;
 
 use embedded_svc::eth;
-#[allow(deprecated)]
-use embedded_svc::httpd::{registry::*, *};
 use embedded_svc::io;
 use embedded_svc::ipv4;
 use embedded_svc::mqtt::client::{Client, Connection, MessageImpl, Publish, QoS};
@@ -254,18 +252,19 @@ fn main() -> Result<()> {
 
     #[allow(clippy::redundant_clone)]
     #[cfg(feature = "qemu")]
-    let eth = eth_configure(
-        &sysloop,
-        Box::new(esp_idf_svc::eth::EspEth::wrap(
-            esp_idf_svc::eth::EthDriver::new_openeth(peripherals.mac, sysloop.clone())?,
-        )?),
-    )?;
+    let eth = {
+        let mut eth = Box::new(esp_idf_svc::eth::EspEth::wrap(
+            esp_idf_svc::eth::EthDriver::new_openeth(peripherals.mac, sysloop.clone()),
+        ))?;
+        eth_configure(&sysloop, &mut eth)?;
+
+        eth
+    };
 
     #[allow(clippy::redundant_clone)]
     #[cfg(feature = "ip101")]
-    let eth = eth_configure(
-        &sysloop,
-        Box::new(esp_idf_svc::eth::EspEth::wrap(
+    let eth = {
+        let mut eth = Box::new(esp_idf_svc::eth::EspEth::wrap(
             esp_idf_svc::eth::EthDriver::new_rmii(
                 peripherals.mac,
                 pins.gpio25,
@@ -284,20 +283,24 @@ fn main() -> Result<()> {
                 None,
                 sysloop.clone(),
             )?,
-        )?),
-    )?;
+        )?);
+        eth_configure(&sysloop, &mut eth)?;
+
+        eth
+    };
 
     #[cfg(feature = "w5500")]
-    let eth = eth_configure(
-        &sysloop,
-        Box::new(esp_idf_svc::eth::EspEth::wrap(
+    let eth = {
+        let mut eth = Box::new(esp_idf_svc::eth::EspEth::wrap(
             esp_idf_svc::eth::EthDriver::new_spi(
-                peripherals.spi2,
-                pins.gpio13,
-                pins.gpio12,
-                pins.gpio26,
+                spi::SpiDriver::new(
+                    peripherals.spi2,
+                    pins.gpio13,
+                    pins.gpio12,
+                    Some(pins.gpio26),
+                    &spi::SpiDriverConfig::new().dma(spi::Dma::Auto(4096)),
+                )?,
                 pins.gpio27,
-                esp_idf_hal::spi::Dma::Auto(4096),
                 Some(pins.gpio14),
                 Some(pins.gpio25),
                 esp_idf_svc::eth::SpiEthChipset::W5500,
@@ -306,8 +309,12 @@ fn main() -> Result<()> {
                 None,
                 sysloop.clone(),
             )?,
-        )?),
-    )?;
+        )?);
+
+        eth_configure(&sysloop, &mut eth)?;
+
+        eth
+    };
 
     test_tcp()?;
 
@@ -322,8 +329,10 @@ fn main() -> Result<()> {
 
     let _timer = test_timer(eventloop, mqtt_client)?;
 
-    #[cfg(feature = "experimental")]
-    experimental::test()?;
+    #[cfg(not(esp_idf_version = "4.3"))]
+    test_tcp_bind_async()?;
+
+    test_https_client()?;
 
     #[cfg(not(feature = "qemu"))]
     #[cfg(esp_idf_lwip_ipv4_napt)]
@@ -714,95 +723,78 @@ fn test_mqtt_client() -> Result<EspMqttClient<ConnState<MessageImpl, EspError>>>
     Ok(client)
 }
 
-#[cfg(feature = "experimental")]
-mod experimental {
-    use core::ffi;
+#[cfg(not(esp_idf_version = "4.3"))]
+fn test_tcp_bind_async() -> anyhow::Result<()> {
+    async fn test_tcp_bind() -> smol::io::Result<()> {
+        /// Echoes messages from the client back to it.
+        async fn echo(stream: smol::Async<TcpStream>) -> smol::io::Result<()> {
+            smol::io::copy(&stream, &mut &stream).await?;
+            Ok(())
+        }
 
-    use log::info;
-    use std::{net::TcpListener, net::TcpStream, thread};
+        // Create a listener.
+        let listener = smol::Async::<TcpListener>::bind(([0, 0, 0, 0], 8081))?;
 
-    pub fn test() -> anyhow::Result<()> {
-        #[cfg(not(esp_idf_version = "4.3"))]
-        test_tcp_bind_async()?;
+        // Accept clients in a loop.
+        loop {
+            let (stream, peer_addr) = listener.accept().await?;
+            info!("Accepted client: {}", peer_addr);
 
-        test_https_client()?;
-
-        Ok(())
+            // Spawn a task that echoes messages from the client back to it.
+            smol::spawn(echo(stream)).detach();
+        }
     }
 
-    #[cfg(not(esp_idf_version = "4.3"))]
-    fn test_tcp_bind_async() -> anyhow::Result<()> {
-        async fn test_tcp_bind() -> smol::io::Result<()> {
-            /// Echoes messages from the client back to it.
-            async fn echo(stream: smol::Async<TcpStream>) -> smol::io::Result<()> {
-                smol::io::copy(&stream, &mut &stream).await?;
-                Ok(())
-            }
+    info!("About to bind a simple echo service to port 8081 using async (smol-rs)!");
 
-            // Create a listener.
-            let listener = smol::Async::<TcpListener>::bind(([0, 0, 0, 0], 8081))?;
-
-            // Accept clients in a loop.
-            loop {
-                let (stream, peer_addr) = listener.accept().await?;
-                info!("Accepted client: {}", peer_addr);
-
-                // Spawn a task that echoes messages from the client back to it.
-                smol::spawn(echo(stream)).detach();
-            }
-        }
-
-        info!("About to bind a simple echo service to port 8081 using async (smol-rs)!");
-
-        #[allow(clippy::needless_update)]
-        {
-            esp_idf_sys::esp!(unsafe {
-                esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
-                    max_fds: 5,
-                    ..Default::default()
-                })
-            })?;
-        }
-
-        thread::Builder::new().stack_size(4096).spawn(move || {
-            smol::block_on(test_tcp_bind()).unwrap();
+    #[allow(clippy::needless_update)]
+    {
+        esp_idf_sys::esp!(unsafe {
+            esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
+                max_fds: 5,
+                ..Default::default()
+            })
         })?;
-
-        Ok(())
     }
 
-    fn test_https_client() -> anyhow::Result<()> {
-        use embedded_svc::http::{self, client::*, status, Headers, Status};
-        use embedded_svc::io::Read;
-        use embedded_svc::utils::io;
-        use esp_idf_svc::http::client::*;
+    thread::Builder::new().stack_size(4096).spawn(move || {
+        smol::block_on(test_tcp_bind()).unwrap();
+    })?;
 
-        let url = String::from("https://google.com");
+    Ok(())
+}
 
-        info!("About to fetch content from {}", url);
+fn test_https_client() -> anyhow::Result<()> {
+    use embedded_svc::http::{self, client::*, status, Headers, Status};
+    use embedded_svc::io::Read;
+    use embedded_svc::utils::io;
+    use esp_idf_svc::http::client::*;
 
-        let mut client = Client::wrap(EspHttpConnection::new(&Configuration {
-            crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+    let url = String::from("https://google.com");
 
-            ..Default::default()
-        })?);
+    info!("About to fetch content from {}", url);
 
-        let mut response = client.get(&url)?.submit()?;
+    let mut client = Client::wrap(EspHttpConnection::new(&Configuration {
+        crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
 
-        let mut body = [0_u8; 3048];
+        ..Default::default()
+    })?);
 
-        let read = io::try_read_full(&mut response, &mut body).map_err(|err| err.0)?;
+    let mut response = client.get(&url)?.submit()?;
 
-        info!(
-            "Body (truncated to 3K):\n{:?}",
-            String::from_utf8_lossy(&body[..read]).into_owned()
-        );
+    let mut body = [0_u8; 3048];
 
-        // Complete the response
-        while response.read(&mut body)? > 0 {}
+    let read = io::try_read_full(&mut response, &mut body).map_err(|err| err.0)?;
 
-        Ok(())
-    }
+    info!(
+        "Body (truncated to 3K):\n{:?}",
+        String::from_utf8_lossy(&body[..read]).into_owned()
+    );
+
+    // Complete the response
+    while response.read(&mut body)? > 0 {}
+
+    Ok(())
 }
 
 #[cfg(feature = "ttgo")]
@@ -826,8 +818,8 @@ fn ttgo_hello_world(
             sclk,
             sdo,
             Option::<gpio::Gpio21>::None,
-            spi::Dma::Disabled,
             Some(cs),
+            &spi::SpiDriverConfig::new().dma(spi::Dma::Disabled),
             &spi::SpiConfig::new().baudrate(26.MHz().into()),
         )?,
         gpio::PinDriver::output(dc)?,
@@ -956,6 +948,7 @@ fn ssd1306g_hello_world_spi(
             Option::<gpio::AnyIOPin>::None,
             spi::Dma::Disabled,
             Some(cs),
+            &spi::SpiDriverConfig::new().dma(spi::Dma::Disabled),
             &spi::SpiConfig::new().baudrate(10.MHz().into()),
         )?,
         gpio::PinDriver::output(dc)?,
@@ -998,7 +991,7 @@ fn ssd1306g_hello_world(
     pwr: gpio::AnyOutputPin,
     scl: gpio::AnyIOPin,
     sda: gpio::AnyIOPin,
-) -> Result<impl OutputPin<Error = EspError>> {
+) -> Result<impl OutputPin<Error = esp_idf_hal::gpio::GpioError>> {
     info!("About to initialize a generic SSD1306 I2C LED driver");
 
     let di = ssd1306::I2CDisplayInterface::new(i2c::I2cDriver::new(
@@ -1060,8 +1053,8 @@ fn esp32s3_usb_otg_hello_world(
             sclk,
             sdo,
             Option::<gpio::AnyIOPin>::None,
-            spi::Dma::Disabled,
             Some(cs),
+            &spi::SpiDriverConfig::new().dma(spi::Dma::Disabled),
             &spi::SpiConfig::new().baudrate(80.MHz().into()),
         )?,
         gpio::PinDriver::output(dc)?,
@@ -1109,80 +1102,6 @@ where
 }
 
 #[allow(unused_variables)]
-#[cfg(not(feature = "experimental"))]
-fn httpd(mutex: Arc<(Mutex<Option<u32>>, Condvar)>) -> Result<idf::Server> {
-    let server = idf::ServerRegistry::new()
-        .at("/")
-        .get(|_| Ok("Hello from Rust!".into()))?
-        .at("/foo")
-        .get(|_| bail!("Boo, something happened!"))?
-        .at("/bar")
-        .get(|_| {
-            Response::new(403)
-                .status_message("No permissions")
-                .body("You have no permissions to access this page".into())
-                .into()
-        })?
-        .at("/panic")
-        .get(|_| panic!("User requested a panic!"))?;
-
-    #[cfg(esp32s2)]
-    let server = httpd_ulp_endpoints(server, mutex)?;
-
-    server.start(&Default::default())
-}
-
-#[cfg(all(esp32s2, not(feature = "experimental")))]
-fn httpd_ulp_endpoints(
-    server: ServerRegistry,
-    mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
-) -> Result<ServerRegistry> {
-    server
-        .at("/ulp")
-        .get(|_| {
-            Ok(r#"
-            <doctype html5>
-            <html>
-                <body>
-                    <form method = "post" action = "/ulp_start" enctype="application/x-www-form-urlencoded">
-                        Connect a LED to ESP32-S2 GPIO <b>Pin 04</b> and GND.<br>
-                        Blink it with ULP <input name = "cycles" type = "text" value = "10"> times
-                        <input type = "submit" value = "Go!">
-                    </form>
-                </body>
-            </html>
-            "#.into())
-        })?
-        .at("/ulp_start")
-        .post(move |mut request| {
-            let body = request.as_bytes()?;
-
-            let cycles = url::form_urlencoded::parse(&body)
-                .filter(|p| p.0 == "cycles")
-                .map(|p| str::parse::<u32>(&p.1).map_err(Error::msg))
-                .next()
-                .ok_or(anyhow::anyhow!("No parameter cycles"))??;
-
-            let mut wait = mutex.0.lock().unwrap();
-
-            *wait = Some(cycles);
-            mutex.1.notify_one();
-
-            Ok(format!(
-                r#"
-                <doctype html5>
-                <html>
-                    <body>
-                        About to sleep now. The ULP chip should blink the LED {} times and then wake me up. Bye!
-                    </body>
-                </html>
-                "#,
-                cycles).to_owned().into())
-        })
-}
-
-#[allow(unused_variables)]
-#[cfg(feature = "experimental")]
 fn httpd(
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
 ) -> Result<esp_idf_svc::http::server::EspHttpServer> {
@@ -1282,7 +1201,7 @@ fn httpd(
     Ok(server)
 }
 
-#[cfg(all(esp32s2, feature = "experimental"))]
+#[cfg(esp32s2)]
 fn httpd_ulp_endpoints(
     server: &mut esp_idf_svc::http::server::EspHttpServer,
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
@@ -1386,9 +1305,17 @@ fn wifi(
 
     use esp_idf_svc::handle::RawHandle;
 
-    let mut wifi = Box::new(EspWifi::new(modem, sysloop.clone(), None)?);
+    let mut esp_wifi = EspWifi::new(modem, sysloop.clone(), None)?;
 
-    info!("Wifi created, about to scan");
+    let mut wifi = BlockingWifi::wrap(&mut esp_wifi, sysloop)?;
+
+    wifi.set_configuration(&Configuration::Client(ClientConfiguration::default()))?;
+
+    info!("Starting wifi...");
+
+    wifi.start()?;
+
+    info!("Scanning...");
 
     let ap_infos = wifi.scan()?;
 
@@ -1422,73 +1349,49 @@ fn wifi(
         },
     ))?;
 
-    wifi.start()?;
-
-    info!("Starting wifi...");
-
-    if !WifiWait::new(&sysloop)?
-        .wait_with_timeout(Duration::from_secs(20), || wifi.is_started().unwrap())
-    {
-        bail!("Wifi did not start");
-    }
-
     info!("Connecting wifi...");
 
     wifi.connect()?;
 
-    if !EspNetifWait::new::<EspNetif>(wifi.sta_netif(), &sysloop)?.wait_with_timeout(
-        Duration::from_secs(20),
-        || {
-            wifi.is_connected().unwrap()
-                && wifi.sta_netif().get_ip_info().unwrap().ip != Ipv4Addr::new(0, 0, 0, 0)
-        },
-    ) {
-        bail!("Wifi did not connect or did not receive a DHCP lease");
-    }
+    info!("Waiting for DHCP lease...");
 
-    let ip_info = wifi.sta_netif().get_ip_info()?;
+    wifi.wait_netif_up()?;
+
+    let ip_info = wifi.wifi().sta_netif().get_ip_info()?;
 
     info!("Wifi DHCP info: {:?}", ip_info);
 
     ping(ip_info.subnet.gateway)?;
 
-    Ok(wifi)
+    Ok(Box::new(esp_wifi))
 }
 
 #[cfg(any(feature = "qemu", feature = "w5500", feature = "ip101"))]
-fn eth_configure(
+fn eth_configure<'d, T>(
     sysloop: &EspSystemEventLoop,
-    mut eth: Box<esp_idf_svc::eth::EspEth<'static>>,
-) -> Result<Box<esp_idf_svc::eth::EspEth<'static>>> {
+    eth: &mut esp_idf_svc::eth::EspEth<'d, T>,
+) -> Result<()> {
     use std::net::Ipv4Addr;
 
     info!("Eth created");
 
-    eth.start()?;
+    let mut eth = esp_idf_svc::eth::BlockingEth::wrap(eth, sysloop.clone())?;
 
     info!("Starting eth...");
 
-    if !esp_idf_svc::eth::EthWait::new(eth.driver(), sysloop)?
-        .wait_with_timeout(Duration::from_secs(20), || eth.is_started().unwrap())
-    {
-        bail!("Eth did not start");
-    }
+    eth.start()?;
 
-    if !EspNetifWait::new::<EspNetif>(eth.netif(), &sysloop)?
-        .wait_with_timeout(Duration::from_secs(20), || {
-            eth.netif().get_ip_info().unwrap().ip != Ipv4Addr::new(0, 0, 0, 0)
-        })
-    {
-        bail!("Eth did not receive a DHCP lease");
-    }
+    info!("Waiting for DHCP lease...");
 
-    let ip_info = eth.netif().get_ip_info()?;
+    eth.wait_netif_up()?;
+
+    let ip_info = eth.eth().netif().get_ip_info()?;
 
     info!("Eth DHCP info: {:?}", ip_info);
 
     ping(ip_info.subnet.gateway)?;
 
-    Ok(eth)
+    Ok(())
 }
 
 fn ping(ip: ipv4::Ipv4Addr) -> Result<()> {
