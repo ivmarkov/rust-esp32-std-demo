@@ -704,9 +704,9 @@ fn test_mqtt_client() -> Result<EspMqttClient<'static, ConnState<MessageImpl, Es
 
 #[cfg(not(esp_idf_version = "4.3"))]
 fn test_tcp_bind_async() -> anyhow::Result<()> {
-    async fn test_tcp_bind() -> std::io::Result<()> {
-        let executor = async_executor::LocalExecutor::new();
+    use async_executor::LocalExecutor;
 
+    async fn test_tcp_bind(executor: &LocalExecutor<'_>) -> std::io::Result<()> {
         /// Echoes messages from the client back to it.
         async fn echo(stream: async_io::Async<TcpStream>) -> std::io::Result<()> {
             futures_lite::io::copy(&stream, &mut &stream).await?;
@@ -741,7 +741,9 @@ fn test_tcp_bind_async() -> anyhow::Result<()> {
     }
 
     thread::Builder::new().stack_size(20000).spawn(move || {
-        async_io::block_on(test_tcp_bind()).unwrap();
+        let executor = LocalExecutor::new();
+
+        async_io::block_on(test_tcp_bind(&executor)).unwrap();
     })?;
 
     Ok(())
