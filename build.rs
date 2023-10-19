@@ -1,17 +1,11 @@
 use std::path::PathBuf;
 
-use embuild::{
-    self, bingen,
-    build::{CfgArgs, LinkArgs},
-    cargo, symgen,
-};
+use embuild::{self, bingen, cargo, symgen};
 
-fn main() -> anyhow::Result<()> {
-    // Necessary because of this issue: https://github.com/rust-lang/cargo/issues/9641
-    LinkArgs::output_propagated("ESP_IDF")?;
+fn main() {
+    embuild::espidf::sysenv::output();
 
-    let cfg = CfgArgs::try_from_env("ESP_IDF")?;
-
+    let cfg = embuild::espidf::sysenv::cfg_args().unwrap();
     if cfg.get("esp32s2").is_some() {
         // Future; might be possible once https://github.com/rust-lang/cargo/issues/9096 hits Cargo nightly:
         //let ulp_elf = PathBuf::from(env::var_os("CARGO_BIN_FILE_RUST_ESP32_ULP_BLINK_rust_esp32_ulp_blink").unwrap());
@@ -20,14 +14,12 @@ fn main() -> anyhow::Result<()> {
         cargo::track_file(&ulp_elf);
 
         // This is where the RTC Slow Mem is mapped within the ESP32-S2 memory space
-        let ulp_bin = symgen::Symgen::new(&ulp_elf, 0x5000_0000_u64).run()?;
+        let ulp_bin = symgen::Symgen::new(&ulp_elf, 0x5000_0000_u64)
+            .run()
+            .unwrap();
         cargo::track_file(ulp_bin);
 
-        let ulp_sym = bingen::Bingen::new(ulp_elf).run()?;
+        let ulp_sym = bingen::Bingen::new(ulp_elf).run().unwrap();
         cargo::track_file(ulp_sym);
     }
-
-    cfg.output();
-
-    Ok(())
 }

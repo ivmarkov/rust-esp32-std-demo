@@ -22,60 +22,43 @@ compile_error!(
     "The `esp32s3_usb_otg` feature can only be built for the `xtensa-esp32s3-espidf` target."
 );
 
+use core::cell::RefCell;
 use core::ffi;
+use core::sync::atomic::*;
 
 use std::fs;
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::io::{Read as _, Write as _};
+use std::net::{TcpListener, TcpStream, ToSocketAddrs};
+use std::os::fd::{AsRawFd, IntoRawFd};
 use std::path::PathBuf;
 use std::sync::{Condvar, Mutex};
-use std::{cell::RefCell, env, sync::atomic::*, sync::Arc, thread, time::*};
+use std::{env, sync::Arc, thread, time::*};
 
 use anyhow::{bail, Result};
 
+use async_io::Async;
+use esp_idf_svc::http::server::{EspHttpConnection, Request};
+use esp_idf_svc::io::Write;
 use log::*;
 
-use url;
+use esp_idf_svc::sys::EspError;
 
-use smol;
-
-use embedded_hal::adc::OneShot;
-use embedded_hal::blocking::delay::DelayMs;
-use embedded_hal::digital::v2::OutputPin;
-
-use embedded_svc::eth;
-use embedded_svc::io;
-use embedded_svc::ipv4;
-use embedded_svc::mqtt::client::{Client, Connection, MessageImpl, Publish, QoS};
-use embedded_svc::ping::Ping;
-use embedded_svc::sys_time::SystemTime;
-use embedded_svc::timer::TimerService;
-use embedded_svc::timer::*;
-use embedded_svc::utils::mqtt::client::ConnState;
-use embedded_svc::wifi::*;
+use esp_idf_svc::hal::adc;
+use esp_idf_svc::hal::delay;
+use esp_idf_svc::hal::gpio;
+use esp_idf_svc::hal::i2c;
+use esp_idf_svc::hal::peripheral;
+use esp_idf_svc::hal::prelude::*;
+use esp_idf_svc::hal::spi;
 
 use esp_idf_svc::eventloop::*;
-use esp_idf_svc::httpd as idf;
-use esp_idf_svc::httpd::ServerRegistry;
+use esp_idf_svc::ipv4;
 use esp_idf_svc::mqtt::client::*;
-use esp_idf_svc::netif::*;
-use esp_idf_svc::nvs::*;
 use esp_idf_svc::ping;
 use esp_idf_svc::sntp;
 use esp_idf_svc::systime::EspSystemTime;
 use esp_idf_svc::timer::*;
 use esp_idf_svc::wifi::*;
-
-use esp_idf_hal::adc;
-use esp_idf_hal::delay;
-use esp_idf_hal::gpio;
-use esp_idf_hal::i2c;
-use esp_idf_hal::peripheral;
-use esp_idf_hal::prelude::*;
-use esp_idf_hal::spi;
-
-use esp_idf_sys;
-use esp_idf_sys::{esp, EspError};
 
 use display_interface_spi::SPIInterfaceNoCS;
 
@@ -108,10 +91,10 @@ thread_local! {
     static TLS: RefCell<u32> = RefCell::new(13);
 }
 
-static CS: esp_idf_hal::task::CriticalSection = esp_idf_hal::task::CriticalSection::new();
+static CS: esp_idf_svc::hal::task::CriticalSection = esp_idf_svc::hal::task::CriticalSection::new();
 
 fn main() -> Result<()> {
-    esp_idf_sys::link_patches();
+    esp_idf_svc::sys::link_patches();
 
     test_print();
 
@@ -141,7 +124,7 @@ fn main() -> Result<()> {
 
     //     let mut x = 0;
 
-    //     esp_idf_hal::interrupt::free(move || {
+    //     esp_idf_svc::hal::interrupt::free(move || {
     //         for _ in 0..2000000 {
     //             for _ in 0..2000000 {
     //                 x += 1;
@@ -362,7 +345,7 @@ fn main() -> Result<()> {
     #[cfg(not(esp32))]
     let adc_pin = pins.gpio2;
 
-    let mut a2 = adc::AdcChannelDriver::<_, adc::Atten11dB<adc::ADC1>>::new(adc_pin)?;
+    let mut a2 = adc::AdcChannelDriver::<{ adc::attenuation::DB_11 }, _>::new(adc_pin)?;
 
     let mut powered_adc1 = adc::AdcDriver::new(
         peripherals.adc1,
@@ -591,8 +574,6 @@ fn test_timer(
     eventloop: EspBackgroundEventLoop,
     mut client: EspMqttClient<ConnState<MessageImpl, EspError>>,
 ) -> Result<EspTimer> {
-    use embedded_svc::event_bus::Postbox;
-
     info!("About to schedule a one-shot timer for after 2 seconds");
     let once_timer = EspTaskTimerService::new()?.timer(|| {
         info!("One-shot timer triggered");
@@ -658,9 +639,7 @@ impl EspTypedEventDeserializer<EventLoopMessage> for EventLoopMessage {
     }
 }
 
-fn test_eventloop() -> Result<(EspBackgroundEventLoop, EspBackgroundSubscription)> {
-    use embedded_svc::event_bus::EventBus;
-
+fn test_eventloop() -> Result<(EspBackgroundEventLoop, EspBackgroundSubscription<'static>)> {
     info!("About to start a background event loop");
     let eventloop = EspBackgroundEventLoop::new(&Default::default())?;
 
@@ -672,12 +651,12 @@ fn test_eventloop() -> Result<(EspBackgroundEventLoop, EspBackgroundSubscription
     Ok((eventloop, subscription))
 }
 
-fn test_mqtt_client() -> Result<EspMqttClient<ConnState<MessageImpl, EspError>>> {
+fn test_mqtt_client() -> Result<EspMqttClient<'static, ConnState<MessageImpl, EspError>>> {
     info!("About to start MQTT client");
 
     let conf = MqttClientConfiguration {
         client_id: Some("rust-esp32-std-demo"),
-        crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+        crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
 
         ..Default::default()
     };
@@ -725,15 +704,17 @@ fn test_mqtt_client() -> Result<EspMqttClient<ConnState<MessageImpl, EspError>>>
 
 #[cfg(not(esp_idf_version = "4.3"))]
 fn test_tcp_bind_async() -> anyhow::Result<()> {
-    async fn test_tcp_bind() -> smol::io::Result<()> {
+    async fn test_tcp_bind() -> std::io::Result<()> {
+        let executor = async_executor::LocalExecutor::new();
+
         /// Echoes messages from the client back to it.
-        async fn echo(stream: smol::Async<TcpStream>) -> smol::io::Result<()> {
-            smol::io::copy(&stream, &mut &stream).await?;
+        async fn echo(stream: async_io::Async<TcpStream>) -> std::io::Result<()> {
+            futures_lite::io::copy(&stream, &mut &stream).await?;
             Ok(())
         }
 
         // Create a listener.
-        let listener = smol::Async::<TcpListener>::bind(([0, 0, 0, 0], 8081))?;
+        let listener = async_io::Async::<TcpListener>::bind(([0, 0, 0, 0], 8081))?;
 
         // Accept clients in a loop.
         loop {
@@ -741,60 +722,62 @@ fn test_tcp_bind_async() -> anyhow::Result<()> {
             info!("Accepted client: {}", peer_addr);
 
             // Spawn a task that echoes messages from the client back to it.
-            smol::spawn(echo(stream)).detach();
+            executor.spawn(async { echo(stream).await }).detach();
         }
     }
 
-    info!("About to bind a simple echo service to port 8081 using async (smol-rs)!");
+    info!("About to bind a simple echo service to port 8081 using async (with async-io)!");
 
     #[allow(clippy::needless_update)]
     {
-        esp_idf_sys::esp!(unsafe {
-            esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
-                max_fds: 5,
-                ..Default::default()
-            })
+        esp_idf_svc::sys::esp!(unsafe {
+            esp_idf_svc::sys::esp_vfs_eventfd_register(
+                &esp_idf_svc::sys::esp_vfs_eventfd_config_t {
+                    max_fds: 5,
+                    ..Default::default()
+                },
+            )
         })?;
     }
 
     thread::Builder::new().stack_size(4096).spawn(move || {
-        smol::block_on(test_tcp_bind()).unwrap();
+        async_io::block_on(test_tcp_bind()).unwrap();
     })?;
 
     Ok(())
 }
 
 fn test_https_client() -> anyhow::Result<()> {
-    use embedded_svc::http::{self, client::*, status, Headers, Status};
-    use embedded_svc::io::Read;
-    use embedded_svc::utils::io;
-    use esp_idf_svc::http::client::*;
+    async fn test() -> anyhow::Result<()> {
+        let addr = "google.com:443".to_socket_addrs()?.next().unwrap();
+        let socket = Async::<TcpStream>::connect(addr).await?;
 
-    let url = String::from("https://google.com");
+        let mut tls = esp_idf_svc::tls::AsyncEspTls::adopt(EspTlsSocket::new(socket))?;
 
-    info!("About to fetch content from {}", url);
+        tls.negotiate("google.com", &esp_idf_svc::tls::Config::new())
+            .await?;
 
-    let mut client = Client::wrap(EspHttpConnection::new(&Configuration {
-        crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+        tls.write_all(b"GET / HTTP/1.0\r\n\r\n").await?;
 
-        ..Default::default()
-    })?);
+        let mut body = [0_u8; 3048];
 
-    let mut response = client.get(&url)?.submit()?;
+        let read = esp_idf_svc::io::utils::asynch::try_read_full(&mut tls, &mut body)
+            .await
+            .map_err(|(e, _)| e)?;
 
-    let mut body = [0_u8; 3048];
+        info!(
+            "Body (truncated to 3K):\n{:?}",
+            String::from_utf8_lossy(&body[..read]).into_owned()
+        );
 
-    let read = io::try_read_full(&mut response, &mut body).map_err(|err| err.0)?;
+        Ok(())
+    }
 
-    info!(
-        "Body (truncated to 3K):\n{:?}",
-        String::from_utf8_lossy(&body[..read]).into_owned()
-    );
+    let th = thread::Builder::new()
+        .stack_size(15000)
+        .spawn(move || async_io::block_on(test()))?;
 
-    // Complete the response
-    while response.read(&mut body)? > 0 {}
-
-    Ok(())
+    th.join().unwrap()
 }
 
 #[cfg(feature = "ttgo")]
@@ -862,8 +845,8 @@ fn kaluga_hello_world(
             sclk,
             sdo,
             Option::<gpio::AnyIOPin>::None,
-            spi::Dma::Disabled,
             Some(cs),
+            &spi::SpiDriverConfig::new().dma(spi::Dma::Disabled),
             &spi::SpiConfig::new().baudrate(80.MHz().into()),
         )?,
         gpio::PinDriver::output(dc)?,
@@ -898,14 +881,13 @@ fn heltec_hello_world(
         &i2c::I2cConfig::new().baudrate(400.kHz().into()),
     )?);
 
-    let mut delay = delay::Ets;
     let mut reset = gpio::PinDriver::output(rst)?;
 
     reset.set_high()?;
-    delay.delay_ms(1 as u32);
+    delay::Ets::delay_ms(1 as u32);
 
     reset.set_low()?;
-    delay.delay_ms(10 as u32);
+    delay::Ets::delay_ms(10 as u32);
 
     reset.set_high()?;
 
@@ -920,7 +902,14 @@ fn heltec_hello_world(
         .init()
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-    led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
+    led_draw_custom(
+        &mut display,
+        BinaryColor::Off,
+        BinaryColor::On,
+        BinaryColor::On,
+        BinaryColor::On,
+    )
+    .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     display
         .flush()
@@ -946,7 +935,6 @@ fn ssd1306g_hello_world_spi(
             sclk,
             sdo,
             Option::<gpio::AnyIOPin>::None,
-            spi::Dma::Disabled,
             Some(cs),
             &spi::SpiDriverConfig::new().dma(spi::Dma::Disabled),
             &spi::SpiConfig::new().baudrate(10.MHz().into()),
@@ -954,14 +942,13 @@ fn ssd1306g_hello_world_spi(
         gpio::PinDriver::output(dc)?,
     );
 
-    let mut delay = delay::Ets;
     let mut reset = gpio::PinDriver::output(rst)?;
 
     reset.set_high()?;
-    delay.delay_ms(1 as u32);
+    delay::Ets::delay_ms(1 as u32);
 
     reset.set_low()?;
-    delay.delay_ms(10 as u32);
+    delay::Ets::delay_ms(10 as u32);
 
     reset.set_high()?;
 
@@ -976,7 +963,14 @@ fn ssd1306g_hello_world_spi(
         .init()
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-    led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
+    led_draw_custom(
+        &mut display,
+        BinaryColor::Off,
+        BinaryColor::On,
+        BinaryColor::On,
+        BinaryColor::On,
+    )
+    .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     display
         .flush()
@@ -991,7 +985,7 @@ fn ssd1306g_hello_world(
     pwr: gpio::AnyOutputPin,
     scl: gpio::AnyIOPin,
     sda: gpio::AnyIOPin,
-) -> Result<impl OutputPin<Error = esp_idf_hal::gpio::GpioError>> {
+) -> Result<gpio::PinDriver<'static, gpio::AnyOutputPin, gpio::Output>> {
     info!("About to initialize a generic SSD1306 I2C LED driver");
 
     let di = ssd1306::I2CDisplayInterface::new(i2c::I2cDriver::new(
@@ -1001,7 +995,6 @@ fn ssd1306g_hello_world(
         &i2c::I2cConfig::new().baudrate(400.kHz().into()),
     )?);
 
-    let mut delay = delay::Ets;
     let mut power = gpio::PinDriver::output(pwr)?;
 
     // Powering an OLED display via an output pin allows one to shutdown the display
@@ -1010,7 +1003,7 @@ fn ssd1306g_hello_world(
     // Of course, the I2C driver should also be properly de-initialized etc.
     power.set_drive_strength(gpio::DriveStrength::I40mA)?;
     power.set_high()?;
-    delay.delay_ms(10_u32);
+    delay::Ets::delay_ms(10_u32);
 
     let mut display = ssd1306::Ssd1306::new(
         di,
@@ -1023,7 +1016,14 @@ fn ssd1306g_hello_world(
         .init()
         .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
-    led_draw(&mut display).map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
+    led_draw_custom(
+        &mut display,
+        BinaryColor::Off,
+        BinaryColor::On,
+        BinaryColor::On,
+        BinaryColor::On,
+    )
+    .map_err(|e| anyhow::anyhow!("Display error: {:?}", e))?;
 
     display
         .flush()
@@ -1077,13 +1077,33 @@ where
     D: DrawTarget + Dimensions,
     D::Color: RgbColor,
 {
-    display.clear(RgbColor::BLACK)?;
+    led_draw_custom(
+        display,
+        RgbColor::BLACK,
+        RgbColor::WHITE,
+        RgbColor::BLUE,
+        RgbColor::YELLOW,
+    )
+}
+
+#[allow(dead_code)]
+fn led_draw_custom<D>(
+    display: &mut D,
+    bg: D::Color,
+    fg: D::Color,
+    fill: D::Color,
+    stroke: D::Color,
+) -> Result<(), D::Error>
+where
+    D: DrawTarget + Dimensions,
+{
+    display.clear(bg)?;
 
     Rectangle::new(display.bounding_box().top_left, display.bounding_box().size)
         .into_styled(
             PrimitiveStyleBuilder::new()
-                .fill_color(RgbColor::BLUE)
-                .stroke_color(RgbColor::YELLOW)
+                .fill_color(fill)
+                .stroke_color(stroke)
                 .stroke_width(1)
                 .build(),
         )
@@ -1092,7 +1112,7 @@ where
     Text::new(
         "Hello Rust!",
         Point::new(10, (display.bounding_box().size.height - 10) as i32 / 2),
-        MonoTextStyle::new(&FONT_10X20, RgbColor::WHITE),
+        MonoTextStyle::new(&FONT_10X20, fg),
     )
     .draw(display)?;
 
@@ -1104,32 +1124,23 @@ where
 #[allow(unused_variables)]
 fn httpd(
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
-) -> Result<esp_idf_svc::http::server::EspHttpServer> {
-    use embedded_svc::http::server::{
-        Connection, Handler, HandlerResult, Method, Middleware, Query, Request, Response,
+) -> Result<esp_idf_svc::http::server::EspHttpServer<'static>> {
+    use esp_idf_svc::http::server::{
+        fn_handler, Connection, EspHttpServer, Handler, HandlerResult, Method, Middleware,
     };
-    use embedded_svc::io::Write;
-    use esp_idf_svc::http::server::{fn_handler, EspHttpConnection, EspHttpServer};
 
-    struct SampleMiddleware {}
+    struct SampleMiddleware;
 
-    impl<C> Middleware<C> for SampleMiddleware
-    where
-        C: Connection,
-    {
-        fn handle<'a, H>(&'a self, connection: &'a mut C, handler: &'a H) -> HandlerResult
+    impl<'a> Middleware<EspHttpConnection<'a>> for SampleMiddleware {
+        fn handle<H>(&self, conn: &mut EspHttpConnection<'a>, handler: &H) -> HandlerResult
         where
-            H: Handler<C>,
+            H: Handler<EspHttpConnection<'a>>,
         {
-            let req = Request::wrap(connection);
+            info!("Middleware called with uri: {}", conn.uri());
 
-            info!("Middleware called with uri: {}", req.uri());
-
-            let connection = req.release();
-
-            if let Err(err) = handler.handle(connection) {
-                if !connection.is_response_initiated() {
-                    let mut resp = Request::wrap(connection).into_status_response(500)?;
+            if let Err(err) = handler.handle(conn) {
+                if !conn.is_response_initiated() {
+                    let mut resp = Request::wrap(conn).into_status_response(500)?;
 
                     write!(&mut resp, "ERROR: {err}")?;
                 } else {
@@ -1142,19 +1153,16 @@ fn httpd(
         }
     }
 
-    struct SampleMiddleware2 {}
+    struct SampleMiddleware2;
 
-    impl<C> Middleware<C> for SampleMiddleware2
-    where
-        C: Connection,
-    {
-        fn handle<'a, H>(&'a self, connection: &'a mut C, handler: &'a H) -> HandlerResult
+    impl<'a> Middleware<EspHttpConnection<'a>> for SampleMiddleware2 {
+        fn handle<H>(&self, conn: &mut EspHttpConnection<'a>, handler: &H) -> HandlerResult
         where
-            H: Handler<C>,
+            H: Handler<EspHttpConnection<'a>>,
         {
             info!("Middleware2 called");
 
-            handler.handle(connection)
+            handler.handle(conn)
         }
     }
 
@@ -1206,13 +1214,10 @@ fn httpd_ulp_endpoints(
     server: &mut esp_idf_svc::http::server::EspHttpServer,
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
 ) -> Result<()> {
-    use embedded_svc::http::server::registry::Registry;
-    use embedded_svc::http::server::{Request, Response};
-    use embedded_svc::io::adapters::ToStd;
-
     server
-        .handle_get("/ulp", |_req, resp| {
-            resp.send_str(
+        .handlee("/ulp", Method::Get, |conn| {
+            conn.initiate_ok_response()?;
+            conn.write_all(
             r#"
             <doctype html5>
             <html>
@@ -1224,11 +1229,12 @@ fn httpd_ulp_endpoints(
                     </form>
                 </body>
             </html>
-            "#)?;
+            "#
+            .as_bytes())?;
 
             Ok(())
         })?
-        .handle_post("/ulp_start", move |mut req, resp| {
+        .handler("/ulp_start", Method::Post, move |conn| {
             let mut body = Vec::new();
 
             ToStd::new(req.reader()).read_to_end(&mut body)?;
@@ -1244,7 +1250,7 @@ fn httpd_ulp_endpoints(
             *wait = Some(cycles);
             mutex.1.notify_one();
 
-            resp.send_str(
+            conn.write_all(
                 &format!(
                 r#"
                 <doctype html5>
@@ -1254,7 +1260,8 @@ fn httpd_ulp_endpoints(
                     </body>
                 </html>
                 "#,
-                cycles))?;
+                cycles)
+                .as_bytes())?;
 
             Ok(())
         })?;
@@ -1263,7 +1270,7 @@ fn httpd_ulp_endpoints(
 }
 
 #[cfg(esp32s2)]
-fn start_ulp(mut ulp: esp_idf_hal::ulp::ULP, cycles: u32) -> Result<()> {
+fn start_ulp(mut ulp: esp_idf_svc::hal::ulp::ULP, cycles: u32) -> Result<()> {
     let cycles_var = CYCLES as *mut u32;
 
     unsafe {
@@ -1284,12 +1291,12 @@ fn start_ulp(mut ulp: esp_idf_hal::ulp::ULP, cycles: u32) -> Result<()> {
         ulp.start()?;
         info!("RiscV ULP started");
 
-        esp!(esp_idf_sys::esp_sleep_enable_ulp_wakeup())?;
+        esp_idf_svc::sys::esp!(esp_idf_svc::sys::esp_sleep_enable_ulp_wakeup())?;
         info!("Wakeup from ULP enabled");
 
         // Wake up by a timer in 60 seconds
         info!("About to get to sleep now. Will wake up automatically either in 1 minute, or once the ULP has done blinking the LED");
-        esp_idf_sys::esp_deep_sleep(Duration::from_secs(60).as_micros() as u64);
+        esp_idf_svc::sys::esp_deep_sleep(Duration::from_secs(60).as_micros() as u64);
     }
 
     Ok(())
@@ -1298,13 +1305,9 @@ fn start_ulp(mut ulp: esp_idf_hal::ulp::ULP, cycles: u32) -> Result<()> {
 #[cfg(not(feature = "qemu"))]
 #[allow(dead_code)]
 fn wifi(
-    modem: impl peripheral::Peripheral<P = esp_idf_hal::modem::Modem> + 'static,
+    modem: impl peripheral::Peripheral<P = esp_idf_svc::hal::modem::Modem> + 'static,
     sysloop: EspSystemEventLoop,
 ) -> Result<Box<EspWifi<'static>>> {
-    use std::net::Ipv4Addr;
-
-    use esp_idf_svc::handle::RawHandle;
-
     let mut esp_wifi = EspWifi::new(modem, sysloop.clone(), None)?;
 
     let mut wifi = BlockingWifi::wrap(&mut esp_wifi, sysloop)?;
@@ -1371,8 +1374,6 @@ fn eth_configure<'d, T>(
     sysloop: &EspSystemEventLoop,
     eth: &mut esp_idf_svc::eth::EspEth<'d, T>,
 ) -> Result<()> {
-    use std::net::Ipv4Addr;
-
     info!("Eth created");
 
     let mut eth = esp_idf_svc::eth::BlockingEth::wrap(eth, sysloop.clone())?;
@@ -1434,8 +1435,8 @@ fn waveshare_epd_hello_world(
         sclk,
         sdo,
         Option::<gpio::AnyIOPin>::None,
-        spi::Dma::Disabled,
         Option::<gpio::AnyOutputPin>::None,
+        &spi::SpiDriverConfig::new().dma(spi::Dma::Disabled),
         &spi::SpiConfig::new().baudrate(26.MHz().into()),
     )?;
 
@@ -1465,4 +1466,71 @@ fn waveshare_epd_hello_world(
     epd.display_frame(&mut driver, &mut delay::Ets)?;
 
     Ok(())
+}
+
+pub struct EspTlsSocket(Option<async_io::Async<TcpStream>>);
+
+impl EspTlsSocket {
+    pub const fn new(socket: async_io::Async<TcpStream>) -> Self {
+        Self(Some(socket))
+    }
+
+    pub fn handle(&self) -> i32 {
+        self.0.as_ref().unwrap().as_raw_fd()
+    }
+
+    pub fn poll_readable(
+        &self,
+        ctx: &mut core::task::Context,
+    ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
+        self.0
+            .as_ref()
+            .unwrap()
+            .poll_readable(ctx)
+            .map_err(|_| EspError::from_infallible::<{ esp_idf_svc::sys::ESP_FAIL }>())
+    }
+
+    pub fn poll_writeable(
+        &self,
+        ctx: &mut core::task::Context,
+    ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
+        self.0
+            .as_ref()
+            .unwrap()
+            .poll_writable(ctx)
+            .map_err(|_| EspError::from_infallible::<{ esp_idf_svc::sys::ESP_FAIL }>())
+    }
+
+    fn release(&mut self) -> Result<(), esp_idf_svc::sys::EspError> {
+        let socket = self.0.take().unwrap();
+        socket.into_inner().unwrap().into_raw_fd();
+
+        Ok(())
+    }
+}
+
+impl esp_idf_svc::tls::Socket for EspTlsSocket {
+    fn handle(&self) -> i32 {
+        EspTlsSocket::handle(self)
+    }
+
+    fn release(&mut self) -> Result<(), esp_idf_svc::sys::EspError> {
+        EspTlsSocket::release(self)
+    }
+}
+
+impl esp_idf_svc::tls::PollableSocket for EspTlsSocket {
+    fn poll_readable(
+        &self,
+        ctx: &mut core::task::Context,
+    ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
+        EspTlsSocket::poll_readable(self, ctx)
+    }
+
+    fn poll_writable(
+        &self,
+        ctx: &mut core::task::Context,
+    ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
+        EspTlsSocket::poll_writeable(self, ctx)
+    }
 }
