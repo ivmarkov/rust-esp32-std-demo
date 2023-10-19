@@ -740,7 +740,7 @@ fn test_tcp_bind_async() -> anyhow::Result<()> {
         })?;
     }
 
-    thread::Builder::new().stack_size(4096).spawn(move || {
+    thread::Builder::new().stack_size(20000).spawn(move || {
         async_io::block_on(test_tcp_bind()).unwrap();
     })?;
 
