@@ -704,6 +704,8 @@ fn test_mqtt_client() -> Result<EspMqttClient<'static, ConnState<MessageImpl, Es
 
 #[cfg(not(esp_idf_version = "4.3"))]
 fn test_tcp_bind_async() -> anyhow::Result<()> {
+    use std::pin::pin;
+
     use async_executor::LocalExecutor;
 
     async fn test_tcp_bind(executor: &LocalExecutor<'_>) -> std::io::Result<()> {
@@ -743,7 +745,9 @@ fn test_tcp_bind_async() -> anyhow::Result<()> {
     thread::Builder::new().stack_size(20000).spawn(move || {
         let executor = LocalExecutor::new();
 
-        async_io::block_on(test_tcp_bind(&executor)).unwrap();
+        let fut = &mut pin!(test_tcp_bind(&executor));
+
+        async_io::block_on(executor.run(fut)).unwrap();
     })?;
 
     Ok(())
