@@ -36,7 +36,7 @@ use std::{env, sync::Arc, thread, time::*};
 
 use anyhow::{bail, Result};
 
-use async_io::Async;
+use async_io::{Async, Timer};
 use esp_idf_svc::http::server::{EspHttpConnection, Request};
 use esp_idf_svc::io::Write;
 use log::*;
@@ -311,6 +311,18 @@ fn main() -> Result<()> {
     let mqtt_client = test_mqtt_client()?;
 
     let _timer = test_timer(eventloop, mqtt_client)?;
+
+    #[allow(clippy::needless_update)]
+    {
+        esp_idf_svc::sys::esp!(unsafe {
+            esp_idf_svc::sys::esp_vfs_eventfd_register(
+                &esp_idf_svc::sys::esp_vfs_eventfd_config_t {
+                    max_fds: 5,
+                    ..Default::default()
+                },
+            )
+        })?;
+    }
 
     #[cfg(not(esp_idf_version = "4.3"))]
     test_tcp_bind_async()?;
@@ -730,18 +742,6 @@ fn test_tcp_bind_async() -> anyhow::Result<()> {
 
     info!("About to bind a simple echo service to port 8081 using async (with async-io)!");
 
-    #[allow(clippy::needless_update)]
-    {
-        esp_idf_svc::sys::esp!(unsafe {
-            esp_idf_svc::sys::esp_vfs_eventfd_register(
-                &esp_idf_svc::sys::esp_vfs_eventfd_config_t {
-                    max_fds: 5,
-                    ..Default::default()
-                },
-            )
-        })?;
-    }
-
     thread::Builder::new().stack_size(20000).spawn(move || {
         let executor = LocalExecutor::new();
 
@@ -755,6 +755,78 @@ fn test_tcp_bind_async() -> anyhow::Result<()> {
 
 fn test_https_client() -> anyhow::Result<()> {
     async fn test() -> anyhow::Result<()> {
+        // Implement `esp_idf_svc::tls::PollableSocket` for async-io sockets
+        ////////////////////////////////////////////////////////////////////
+
+        pub struct EspTlsSocket(Option<async_io::Async<TcpStream>>);
+
+        impl EspTlsSocket {
+            pub const fn new(socket: async_io::Async<TcpStream>) -> Self {
+                Self(Some(socket))
+            }
+
+            pub fn handle(&self) -> i32 {
+                self.0.as_ref().unwrap().as_raw_fd()
+            }
+
+            pub fn poll_readable(
+                &self,
+                ctx: &mut core::task::Context,
+            ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
+                self.0
+                    .as_ref()
+                    .unwrap()
+                    .poll_readable(ctx)
+                    .map_err(|_| EspError::from_infallible::<{ esp_idf_svc::sys::ESP_FAIL }>())
+            }
+
+            pub fn poll_writeable(
+                &self,
+                ctx: &mut core::task::Context,
+            ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
+                self.0
+                    .as_ref()
+                    .unwrap()
+                    .poll_writable(ctx)
+                    .map_err(|_| EspError::from_infallible::<{ esp_idf_svc::sys::ESP_FAIL }>())
+            }
+
+            fn release(&mut self) -> Result<(), esp_idf_svc::sys::EspError> {
+                let socket = self.0.take().unwrap();
+                socket.into_inner().unwrap().into_raw_fd();
+
+                Ok(())
+            }
+        }
+
+        impl esp_idf_svc::tls::Socket for EspTlsSocket {
+            fn handle(&self) -> i32 {
+                EspTlsSocket::handle(self)
+            }
+
+            fn release(&mut self) -> Result<(), esp_idf_svc::sys::EspError> {
+                EspTlsSocket::release(self)
+            }
+        }
+
+        impl esp_idf_svc::tls::PollableSocket for EspTlsSocket {
+            fn poll_readable(
+                &self,
+                ctx: &mut core::task::Context,
+            ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
+                EspTlsSocket::poll_readable(self, ctx)
+            }
+
+            fn poll_writable(
+                &self,
+                ctx: &mut core::task::Context,
+            ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
+                EspTlsSocket::poll_writeable(self, ctx)
+            }
+        }
+
+        ////////////////////////////////////////////////////////////////////
+
         let addr = "google.com:443".to_socket_addrs()?.next().unwrap();
         let socket = Async::<TcpStream>::connect(addr).await?;
 
@@ -780,7 +852,7 @@ fn test_https_client() -> anyhow::Result<()> {
     }
 
     let th = thread::Builder::new()
-        .stack_size(15000)
+        .stack_size(20000)
         .spawn(move || async_io::block_on(test()))?;
 
     th.join().unwrap()
@@ -1472,71 +1544,4 @@ fn waveshare_epd_hello_world(
     epd.display_frame(&mut driver, &mut delay::Ets)?;
 
     Ok(())
-}
-
-pub struct EspTlsSocket(Option<async_io::Async<TcpStream>>);
-
-impl EspTlsSocket {
-    pub const fn new(socket: async_io::Async<TcpStream>) -> Self {
-        Self(Some(socket))
-    }
-
-    pub fn handle(&self) -> i32 {
-        self.0.as_ref().unwrap().as_raw_fd()
-    }
-
-    pub fn poll_readable(
-        &self,
-        ctx: &mut core::task::Context,
-    ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
-        self.0
-            .as_ref()
-            .unwrap()
-            .poll_readable(ctx)
-            .map_err(|_| EspError::from_infallible::<{ esp_idf_svc::sys::ESP_FAIL }>())
-    }
-
-    pub fn poll_writeable(
-        &self,
-        ctx: &mut core::task::Context,
-    ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
-        self.0
-            .as_ref()
-            .unwrap()
-            .poll_writable(ctx)
-            .map_err(|_| EspError::from_infallible::<{ esp_idf_svc::sys::ESP_FAIL }>())
-    }
-
-    fn release(&mut self) -> Result<(), esp_idf_svc::sys::EspError> {
-        let socket = self.0.take().unwrap();
-        socket.into_inner().unwrap().into_raw_fd();
-
-        Ok(())
-    }
-}
-
-impl esp_idf_svc::tls::Socket for EspTlsSocket {
-    fn handle(&self) -> i32 {
-        EspTlsSocket::handle(self)
-    }
-
-    fn release(&mut self) -> Result<(), esp_idf_svc::sys::EspError> {
-        EspTlsSocket::release(self)
-    }
-}
-
-impl esp_idf_svc::tls::PollableSocket for EspTlsSocket {
-    fn poll_readable(
-        &self,
-        ctx: &mut core::task::Context,
-    ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
-        EspTlsSocket::poll_readable(self, ctx)
-    }
-
-    fn poll_writable(
-        &self,
-        ctx: &mut core::task::Context,
-    ) -> core::task::Poll<Result<(), esp_idf_svc::sys::EspError>> {
-        EspTlsSocket::poll_writeable(self, ctx)
-    }
 }

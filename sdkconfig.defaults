@@ -1,6 +1,9 @@
 # Necessary for the LED screen demos
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=20000
 
+# Necessary for async-io
+CONFIG_PTHREAD_TASK_STACK_SIZE_DEFAULT=4096
+
 CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096
 
 # NAPT demo (router)
