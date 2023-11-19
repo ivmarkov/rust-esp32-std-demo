@@ -4,7 +4,7 @@ target = "xtensa-esp32-espidf"
 #target = "xtensa-esp32s2-espidf"
 #target = "xtensa-esp32s3-espidf"
 #target = "riscv32imc-esp-espidf"
-#target = "riscv32imac-esp-espidf.json"
+#target = "riscv32imac-esp-espidf"
 
 [target.xtensa-esp32-espidf]
 linker = "ldproxy"

@@ -720,7 +720,7 @@ fn test_mqtt_client() -> Result<EspMqttClient<'static, ConnState<MessageImpl, Es
 fn test_tcp_bind_async() -> anyhow::Result<()> {
     use std::pin::pin;
 
-    use edge_executor::LocalExecutor;
+    use async_executor::LocalExecutor;
 
     async fn test_tcp_bind(executor: &LocalExecutor<'_>) -> std::io::Result<()> {
         /// Echoes messages from the client back to it.
