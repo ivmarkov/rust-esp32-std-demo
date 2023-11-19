@@ -596,22 +596,24 @@ fn test_timer(
     thread::sleep(Duration::from_secs(3));
 
     info!("About to schedule a periodic timer every five seconds");
-    let periodic_timer = EspTaskTimerService::new()?.timer(move || {
-        info!("Tick from periodic timer");
+    let periodic_timer = unsafe {
+        EspTaskTimerService::new()?.timer_nonstatic(move || {
+            info!("Tick from periodic timer");
 
-        let now = EspSystemTime {}.now();
+            let now = EspSystemTime {}.now();
 
-        eventloop.post(&EventLoopMessage::new(now), None).unwrap();
+            eventloop.post(&EventLoopMessage::new(now), None).unwrap();
 
-        client
-            .publish(
-                "rust-esp32-std-demo",
-                QoS::AtMostOnce,
-                false,
-                format!("Now is {now:?}").as_bytes(),
-            )
-            .unwrap();
-    })?;
+            client
+                .publish(
+                    "rust-esp32-std-demo",
+                    QoS::AtMostOnce,
+                    false,
+                    format!("Now is {now:?}").as_bytes(),
+                )
+                .unwrap();
+        })?
+    };
 
     periodic_timer.every(Duration::from_secs(5))?;
 
@@ -718,7 +720,7 @@ fn test_mqtt_client() -> Result<EspMqttClient<'static, ConnState<MessageImpl, Es
 fn test_tcp_bind_async() -> anyhow::Result<()> {
     use std::pin::pin;
 
-    use async_executor::LocalExecutor;
+    use edge_executor::LocalExecutor;
 
     async fn test_tcp_bind(executor: &LocalExecutor<'_>) -> std::io::Result<()> {
         /// Echoes messages from the client back to it.
