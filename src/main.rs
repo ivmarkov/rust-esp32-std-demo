@@ -237,8 +237,8 @@ fn main() -> Result<()> {
     #[cfg(feature = "qemu")]
     let eth = {
         let mut eth = Box::new(esp_idf_svc::eth::EspEth::wrap(
-            esp_idf_svc::eth::EthDriver::new_openeth(peripherals.mac, sysloop.clone()),
-        ))?;
+            esp_idf_svc::eth::EthDriver::new_openeth(peripherals.mac, sysloop.clone())?,
+        )?);
         eth_configure(&sysloop, &mut eth)?;
 
         eth
