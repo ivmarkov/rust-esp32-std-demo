@@ -15,7 +15,7 @@ This GH repository is now **deprecated**, because all of the functionalities it 
 * `esp-idf-sys` [examples](https://github.com/esp-rs/esp-idf-sys/tree/master/examples)
   * If you use `esp-idf-svc` already, just replace all `use esp_idf_sys::...` with `use esp_idf_svc::sys::...`
 
-The repository might also be archived soon.
+The repository might also be *archived* soon.
 
 ## Highlights:
 
