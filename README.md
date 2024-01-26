@@ -6,7 +6,18 @@ A demo STD binary crate for the ESP32[XX] and ESP-IDF, which connects to WiFi, E
 
 [Join in](https://matrix.to/#/#esp-rs:matrix.org) on the discussion!
 
-Highlights:
+# Important Update
+
+This GH repository is now **deprecated**, because all of the functionalities it demonstrates (and more!) are available in the form of **examples/** directly in the `esp-idf-sys`/`esp-idf-hal`/`esp-idf-svc` crates:
+* `esp-idf-svc` [examples](https://github.com/esp-rs/esp-idf-svc/tree/master/examples)
+* `esp-idf-hal` [examples](https://github.com/esp-rs/esp-idf-hal/tree/master/examples)
+  * If you use `esp-idf-svc` already, just replace all `use esp_idf_hal::...` with `use esp_idf_svc::hal::...`
+* `esp-idf-sys` [examples](https://github.com/esp-rs/esp-idf-sys/tree/master/examples)
+  * If you use `esp-idf-svc` already, just replace all `use esp_idf_sys::...` with `use esp_idf_svc::sys::...`
+
+The repository might also be archived soon.
+
+## Highlights:
 
 - **Pure Rust and pure Cargo build!** No CMake, no PlatformIO, no C helpers
   - ... via [esp-idf-sys](https://crates.io/crates/esp-idf-sys) and [embuild](https://crates.io/crates/embuild)
