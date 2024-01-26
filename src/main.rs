@@ -89,7 +89,7 @@ include!(env!("EMBUILD_GENERATED_SYMBOLS_FILE"));
 const ULP: &[u8] = include_bytes!(env!("EMBUILD_GENERATED_BIN_FILE"));
 
 thread_local! {
-    static TLS: RefCell<u32> = RefCell::new(13);
+    static TLS: RefCell<u32> = const { RefCell::new(13) };
 }
 
 static CS: esp_idf_svc::hal::task::CriticalSection = esp_idf_svc::hal::task::CriticalSection::new();
