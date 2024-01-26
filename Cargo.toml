@@ -2,7 +2,7 @@
 name = "rust-esp32-std-demo"
 version = "0.30.0"
 authors = ["ivmarkov"]
-edition = "2018"
+edition = "2021"
 categories = ["embedded", "hardware-support"]
 keywords = ["embedded", "svc", "idf", "esp-idf", "esp32"]
 description = "A demo binary crate for the ESP32 and ESP-IDF, which connects to WiFi, Ethernet, drives a small HTTP server and draws on a LED screen"
@@ -19,6 +19,10 @@ opt-level = "z"
 
 [patch.crates-io]
 crossbeam-utils = { git = "https://github.com/crossbeam-rs/crossbeam" }
+esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc" }
+embedded-svc = { git = "https://github.com/esp-rs/embedded-svc" }
+esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf-hal" }
+esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys" }
 
 [features]
 default = []

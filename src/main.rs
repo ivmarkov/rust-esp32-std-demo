@@ -23,7 +23,8 @@ compile_error!(
 );
 
 use core::cell::RefCell;
-use core::ffi;
+use core::ffi::{self, CStr};
+use core::fmt::{self, Debug};
 use core::sync::atomic::*;
 
 use std::fs;
@@ -38,7 +39,7 @@ use anyhow::{bail, Result};
 
 use async_io::{Async, Timer};
 use esp_idf_svc::http::server::{EspHttpConnection, Request};
-use esp_idf_svc::io::Write;
+use esp_idf_svc::io::{EspIOError, Write};
 use log::*;
 
 use esp_idf_svc::sys::EspError;
@@ -584,7 +585,7 @@ fn test_tcp_bind() -> Result<()> {
 
 fn test_timer(
     eventloop: EspBackgroundEventLoop,
-    mut client: EspMqttClient<ConnState<MessageImpl, EspError>>,
+    mut client: EspMqttClient<'static>,
 ) -> Result<EspTimer> {
     info!("About to schedule a one-shot timer for after 2 seconds");
     let once_timer = EspTaskTimerService::new()?.timer(|| {
@@ -602,7 +603,9 @@ fn test_timer(
 
             let now = EspSystemTime {}.now();
 
-            eventloop.post(&EventLoopMessage::new(now), None).unwrap();
+            eventloop
+                .post::<CustomEvent>(&CustomEvent::new(now), delay::NON_BLOCK)
+                .unwrap();
 
             client
                 .publish(
@@ -621,35 +624,39 @@ fn test_timer(
 }
 
 #[derive(Copy, Clone, Debug)]
-struct EventLoopMessage(Duration);
+struct CustomEvent(Duration);
 
-impl EventLoopMessage {
+impl CustomEvent {
     pub fn new(duration: Duration) -> Self {
         Self(duration)
     }
 }
 
-impl EspTypedEventSource for EventLoopMessage {
-    fn source() -> *const ffi::c_char {
-        b"DEMO-SERVICE\0".as_ptr() as *const _
+unsafe impl EspEventSource for CustomEvent {
+    fn source() -> Option<&'static CStr> {
+        // String should be unique across the whole project and ESP IDF
+        Some(CStr::from_bytes_with_nul(b"DEMO-SERVICE\0").unwrap())
     }
 }
 
-impl EspTypedEventSerializer<EventLoopMessage> for EventLoopMessage {
-    fn serialize<R>(
-        event: &EventLoopMessage,
-        f: impl for<'a> FnOnce(&'a EspEventPostData) -> R,
-    ) -> R {
-        f(&unsafe { EspEventPostData::new(Self::source(), Self::event_id(), event) })
+impl EspEventSerializer for CustomEvent {
+    type Data<'a> = CustomEvent;
+
+    fn serialize<F, R>(event: &Self::Data<'_>, f: F) -> R
+    where
+        F: FnOnce(&EspEventPostData) -> R,
+    {
+        // Go the easy way since our payload implements Copy and is `'static`
+        f(&unsafe { EspEventPostData::new(Self::source().unwrap(), Self::event_id(), event) })
     }
 }
 
-impl EspTypedEventDeserializer<EventLoopMessage> for EventLoopMessage {
-    fn deserialize<R>(
-        data: &EspEventFetchData,
-        f: &mut impl for<'a> FnMut(&'a EventLoopMessage) -> R,
-    ) -> R {
-        f(unsafe { data.as_payload() })
+impl EspEventDeserializer for CustomEvent {
+    type Data<'a> = CustomEvent;
+
+    fn deserialize<'a>(data: &EspEvent<'a>) -> Self::Data<'a> {
+        // Just as easy as serializing
+        *unsafe { data.as_payload::<CustomEvent>() }
     }
 }
 
@@ -658,14 +665,14 @@ fn test_eventloop() -> Result<(EspBackgroundEventLoop, EspBackgroundSubscription
     let eventloop = EspBackgroundEventLoop::new(&Default::default())?;
 
     info!("About to subscribe to the background event loop");
-    let subscription = eventloop.subscribe(|message: &EventLoopMessage| {
+    let subscription = eventloop.subscribe::<CustomEvent, _>(|message| {
         info!("Got message from the event loop: {:?}", message.0);
     })?;
 
     Ok((eventloop, subscription))
 }
 
-fn test_mqtt_client() -> Result<EspMqttClient<'static, ConnState<MessageImpl, EspError>>> {
+fn test_mqtt_client() -> Result<EspMqttClient<'static>> {
     info!("About to start MQTT client");
 
     let conf = MqttClientConfiguration {
@@ -675,8 +682,7 @@ fn test_mqtt_client() -> Result<EspMqttClient<'static, ConnState<MessageImpl, Es
         ..Default::default()
     };
 
-    let (mut client, mut connection) =
-        EspMqttClient::new_with_conn("mqtts://broker.emqx.io:8883", &conf)?;
+    let (mut client, mut connection) = EspMqttClient::new("mqtts://broker.emqx.io:8883", &conf)?;
 
     info!("MQTT client started");
 
@@ -690,11 +696,8 @@ fn test_mqtt_client() -> Result<EspMqttClient<'static, ConnState<MessageImpl, Es
     thread::spawn(move || {
         info!("MQTT Listening for messages");
 
-        while let Some(msg) = connection.next() {
-            match msg {
-                Err(e) => info!("MQTT Message ERROR: {}", e),
-                Ok(msg) => info!("MQTT Message: {:?}", msg),
-            }
+        while let Ok(event) = connection.next() {
+            info!("MQTT Event: {}", event.payload());
         }
 
         info!("MQTT connection loop exit");
@@ -832,7 +835,7 @@ fn test_https_client() -> anyhow::Result<()> {
         let addr = "google.com:443".to_socket_addrs()?.next().unwrap();
         let socket = Async::<TcpStream>::connect(addr).await?;
 
-        let mut tls = esp_idf_svc::tls::AsyncEspTls::adopt(EspTlsSocket::new(socket))?;
+        let mut tls = esp_idf_svc::tls::EspAsyncTls::adopt(EspTlsSocket::new(socket))?;
 
         tls.negotiate("google.com", &esp_idf_svc::tls::Config::new())
             .await?;
@@ -1206,26 +1209,29 @@ fn httpd(
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
 ) -> Result<esp_idf_svc::http::server::EspHttpServer<'static>> {
     use esp_idf_svc::http::server::{
-        fn_handler, Connection, EspHttpServer, Handler, HandlerResult, Method, Middleware,
+        fn_handler, Connection, EspHttpServer, Handler, Method, Middleware,
     };
 
     struct SampleMiddleware;
 
-    impl<'a> Middleware<EspHttpConnection<'a>> for SampleMiddleware {
-        fn handle<H>(&self, conn: &mut EspHttpConnection<'a>, handler: &H) -> HandlerResult
-        where
-            H: Handler<EspHttpConnection<'a>>,
-        {
+    impl<'a, H> Middleware<EspHttpConnection<'a>, H> for SampleMiddleware
+    where
+        H: Handler<EspHttpConnection<'a>>,
+        H::Error: Debug + fmt::Display + Send + Sync + 'static,
+    {
+        type Error = anyhow::Error;
+
+        fn handle(&self, conn: &mut EspHttpConnection<'a>, handler: &H) -> Result<(), Self::Error> {
             info!("Middleware called with uri: {}", conn.uri());
 
             if let Err(err) = handler.handle(conn) {
                 if !conn.is_response_initiated() {
                     let mut resp = Request::wrap(conn).into_status_response(500)?;
 
-                    write!(&mut resp, "ERROR: {err}")?;
+                    write!(&mut resp, "ERROR: {err:?}")?;
                 } else {
                     // Nothing can be done as the error happened after the response was initiated, propagate further
-                    return Err(err);
+                    Err(anyhow::Error::msg(err))?;
                 }
             }
 
@@ -1235,11 +1241,13 @@ fn httpd(
 
     struct SampleMiddleware2;
 
-    impl<'a> Middleware<EspHttpConnection<'a>> for SampleMiddleware2 {
-        fn handle<H>(&self, conn: &mut EspHttpConnection<'a>, handler: &H) -> HandlerResult
-        where
-            H: Handler<EspHttpConnection<'a>>,
-        {
+    impl<'a, H> Middleware<EspHttpConnection<'a>, H> for SampleMiddleware2
+    where
+        H: Handler<EspHttpConnection<'a>>,
+    {
+        type Error = H::Error;
+
+        fn handle(&self, conn: &mut EspHttpConnection<'a>, handler: &H) -> Result<(), H::Error> {
             info!("Middleware2 called");
 
             handler.handle(conn)
@@ -1253,33 +1261,25 @@ fn httpd(
             req.into_ok_response()?
                 .write_all("Hello from Rust!".as_bytes())?;
 
-            Ok(())
+            Result::<_, EspIOError>::Ok(())
         })?
-        .fn_handler("/foo", Method::Get, |_| {
-            Result::Err("Boo, something happened!".into())
-        })?
+        .fn_handler("/foo", Method::Get, |_| bail!("Boo, something happened!"))?
         .fn_handler("/bar", Method::Get, |req| {
             req.into_response(403, Some("No permissions"), &[])?
-                .write_all("You have no permissions to access this page".as_bytes())?;
-
-            Ok(())
+                .write_all("You have no permissions to access this page".as_bytes())
         })?
-        .fn_handler("/panic", Method::Get, |_| panic!("User requested a panic!"))?
+        .fn_handler::<(), _>("/panic", Method::Get, |_| panic!("User requested a panic!"))?
         .handler(
             "/middleware",
             Method::Get,
-            SampleMiddleware {}.compose(fn_handler(|_| {
-                Result::Err("Boo, something happened!".into())
-            })),
+            SampleMiddleware {}.compose(fn_handler(|_| bail!("Boo, something happened!"))),
         )?
         .handler(
             "/middleware2",
             Method::Get,
             SampleMiddleware2 {}.compose(SampleMiddleware {}.compose(fn_handler(|req| {
                 req.into_ok_response()?
-                    .write_all("Middleware2 handler called".as_bytes())?;
-
-                Ok(())
+                    .write_all("Middleware2 handler called".as_bytes())
             }))),
         )?;
 
@@ -1420,13 +1420,13 @@ fn wifi(
 
     wifi.set_configuration(&Configuration::Mixed(
         ClientConfiguration {
-            ssid: SSID.into(),
-            password: PASS.into(),
+            ssid: SSID.try_into().unwrap(),
+            password: PASS.try_into().unwrap(),
             channel,
             ..Default::default()
         },
         AccessPointConfiguration {
-            ssid: "aptest".into(),
+            ssid: "aptest".try_into().unwrap(),
             channel: channel.unwrap_or(1),
             ..Default::default()
         },
