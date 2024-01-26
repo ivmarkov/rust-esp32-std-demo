@@ -1,6 +1,6 @@
 [package]
 name = "rust-esp32-std-demo"
-version = "0.30.0"
+version = "0.30.1"
 authors = ["ivmarkov"]
 edition = "2021"
 categories = ["embedded", "hardware-support"]
@@ -16,13 +16,6 @@ opt-level = "s"
 [profile.dev]
 debug = true # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
-
-[patch.crates-io]
-crossbeam-utils = { git = "https://github.com/crossbeam-rs/crossbeam" }
-esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc" }
-embedded-svc = { git = "https://github.com/esp-rs/embedded-svc" }
-esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf-hal" }
-esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys" }
 
 [features]
 default = []
@@ -63,7 +56,7 @@ w5500 = []
 anyhow = {version = "1", features = ["backtrace"]}
 log = "0.4"
 url = "2"
-esp-idf-svc = { version = "0.47", features = ["nightly"] }
+esp-idf-svc = "0.48"
 embedded-graphics = "0.7"
 display-interface = "0.4"
 display-interface-spi = "0.4"
