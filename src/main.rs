@@ -89,6 +89,7 @@ include!(env!("EMBUILD_GENERATED_SYMBOLS_FILE"));
 const ULP: &[u8] = include_bytes!(env!("EMBUILD_GENERATED_BIN_FILE"));
 
 thread_local! {
+    #[allow(clippy::thread_local_initializer_can_be_made_const)]
     static TLS: RefCell<u32> = const { RefCell::new(13) };
 }
 
