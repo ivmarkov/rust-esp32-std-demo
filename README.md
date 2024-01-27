@@ -8,7 +8,11 @@ A demo STD binary crate for the ESP32[XX] and ESP-IDF, which connects to WiFi, E
 
 # Important Update
 
-This GH repository is now **deprecated**, because all of the functionalities it demonstrates (and more!) are available in the form of **examples/** directly in the `esp-idf-sys`/`esp-idf-hal`/`esp-idf-svc` crates:
+This GH repository is now **deprecated**, because all of the functionalities it demonstrates (and more!) are available in the form of **examples/** directly in the `esp-idf-sys`/`esp-idf-hal`/`esp-idf-svc` crates (see below).
+
+**To easily generate a "Hello, world!" binary crate for Espressif MCUs with ESP-IDF, use the [`esp-idf-template`](https://github.com/esp-rs/esp-idf-template)**.
+
+Examples:
 * `esp-idf-svc` [examples](https://github.com/esp-rs/esp-idf-svc/tree/master/examples)
 * `esp-idf-hal` [examples](https://github.com/esp-rs/esp-idf-hal/tree/master/examples)
   * If you use `esp-idf-svc` already, just replace all `use esp_idf_hal::...` with `use esp_idf_svc::hal::...`
