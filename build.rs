@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use embuild::{self, bingen, cargo, symgen};
+use embuild::{bingen, cargo, symgen};
 
 fn main() {
     embuild::espidf::sysenv::output();
