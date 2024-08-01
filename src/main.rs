@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 #![allow(clippy::single_component_path_imports)]
+#![allow(unexpected_cfgs)]
 //#![feature(backtrace)]
 
 #[cfg(all(feature = "qemu", not(esp32)))]
