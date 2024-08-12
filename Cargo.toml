@@ -72,3 +72,6 @@ embuild = { version = "0.31.3", features = ["elf"] }
 
 # Future; might be possible once https://github.com/rust-lang/cargo/issues/9096 hits Cargo nightly:
 #rust-esp32-ulp-blink = { git = "https://github.com/ivmarkov/rust-esp32-ulp-blink", artifact = "bin" }
+
+[package.metadata.espflash]
+partition_table = "partitions.csv"
